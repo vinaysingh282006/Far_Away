@@ -1,0 +1,2149 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GUARDIAN MESH | 地上中継監視ステーション</title>
+    
+    <!-- CDNs -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        void: '#0B0B0D',
+                        surface: '#151518',
+                        raised: '#1C1C21',
+                        border: '#29292F',
+                        maroon: '#800020',
+                        'maroon-dim': '#6B1D2F',
+                        pink: '#F5C2C9',
+                        'pink-dim': '#E0A3AC',
+                        slate: '#8E8E93',
+                        white: '#F2F2F7',
+                        green: '#34C759',
+                        red: '#FF3B5C',
+                        amber: '#FF9F0A'
+                    },
+                    fontFamily: {
+                        sans: ['"Segoe UI"', 'Arial', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'Consolas', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #0B0B0D;
+            color: #F2F2F7;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            overflow-x: hidden;
+        }
+
+        .ambient-bg {
+            background:
+                radial-gradient(ellipse 80% 50% at 10% -10%, rgba(128, 0, 32, 0.18) 0%, transparent 55%),
+                radial-gradient(ellipse 60% 40% at 95% 100%, rgba(245, 194, 201, 0.06) 0%, transparent 50%),
+                #0B0B0D;
+        }
+
+        .panel-glow {
+            box-shadow: 0 0 0 1px rgba(41, 41, 47, 0.8), 0 8px 32px rgba(0, 0, 0, 0.45);
+            transition: box-shadow 0.35s ease, border-color 0.35s ease, transform 0.35s ease;
+        }
+        .panel-glow:hover {
+            box-shadow: 0 0 0 1px rgba(128, 0, 32, 0.35), 0 12px 40px rgba(128, 0, 32, 0.12);
+        }
+
+        .sensor-card {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(165deg, #18181c 0%, #151518 45%, #121216 100%);
+        }
+        .sensor-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #800020, #F5C2C9, #800020, transparent);
+            opacity: 0.65;
+        }
+        .sensor-card .telemetry-value {
+            text-shadow: 0 0 24px rgba(245, 194, 201, 0.25);
+        }
+
+        .intel-tile {
+            background: linear-gradient(145deg, rgba(28, 28, 33, 0.95) 0%, rgba(21, 21, 24, 0.98) 100%);
+            border: 1px solid #29292F;
+            border-radius: 3px;
+            padding: 12px 14px;
+            position: relative;
+            overflow: hidden;
+        }
+        .intel-tile::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(128, 0, 32, 0.6), transparent);
+        }
+        .live-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: #34C759;
+            box-shadow: 0 0 8px #34C759;
+            animation: live-pulse 2s ease-in-out infinite;
+        }
+        @keyframes live-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.85); }
+        }
+
+        .brand-glow {
+            box-shadow: 0 0 20px rgba(128, 0, 32, 0.55), inset 0 1px 0 rgba(255,255,255,0.08);
+        }
+
+        .header-accent {
+            background: linear-gradient(90deg, transparent, rgba(128, 0, 32, 0.5), rgba(245, 194, 201, 0.3), rgba(128, 0, 32, 0.5), transparent);
+            height: 1px;
+        }
+
+        .drawer-transition {
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .tab-btn-active {
+            border-left: 3px solid #800020;
+            background: linear-gradient(90deg, rgba(128, 0, 32, 0.18) 0%, transparent 100%);
+            color: #F5C2C9 !important;
+            box-shadow: inset 0 0 24px rgba(128, 0, 32, 0.08);
+        }
+
+        @keyframes border-flash {
+            0% { border-color: #29292F; box-shadow: none; }
+            50% { border-color: #800020; box-shadow: 0 0 16px rgba(128, 0, 32, 0.35); }
+            100% { border-color: #29292F; box-shadow: none; }
+        }
+        .telemetry-update-flash {
+            animation: border-flash 0.45s ease-out;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 0.4; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+        .pulse-active { animation: pulse-ring 2s infinite ease-in-out; }
+
+        @keyframes red-panic {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 0.28; }
+        }
+        .panic-flash {
+            animation: red-panic 0.6s ease-in-out 3;
+            pointer-events: none;
+        }
+
+        .panic-card-stunning {
+            border-left: 4px solid #FF3B5C;
+            background: linear-gradient(90deg, rgba(255, 59, 92, 0.12) 0%, rgba(128, 0, 32, 0.08) 40%, rgba(21, 21, 24, 0.95) 100%);
+            box-shadow: 0 4px 24px rgba(255, 59, 92, 0.15), inset 0 1px 0 rgba(245, 194, 201, 0.06);
+            animation: panic-card-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes panic-card-in {
+            from { opacity: 0; transform: translateX(-8px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .packet-row:hover { background: rgba(128, 0, 32, 0.08); }
+
+        .radar-toggle-active {
+            background: linear-gradient(135deg, #800020, #6B1D2F) !important;
+            color: #F2F2F7 !important;
+            box-shadow: 0 0 16px rgba(128, 0, 32, 0.5);
+        }
+
+        .ai-terminal-glow {
+            background: linear-gradient(180deg, rgba(11, 11, 13, 0.9) 0%, rgba(21, 21, 24, 0.95) 100%);
+            box-shadow: inset 0 0 40px rgba(128, 0, 32, 0.06), 0 0 0 1px #29292F;
+        }
+
+        .chart-panel {
+            background: linear-gradient(160deg, #18181c 0%, #151518 100%);
+        }
+
+        .arch-step {
+            background: linear-gradient(90deg, rgba(11, 11, 13, 0.6) 0%, rgba(28, 28, 33, 0.5) 100%);
+            border: 1px solid #29292F;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .arch-step:hover {
+            border-color: rgba(128, 0, 32, 0.5);
+            box-shadow: 0 0 20px rgba(128, 0, 32, 0.1);
+        }
+
+        .cursor-blink::after {
+            content: '▋';
+            animation: blink 1s step-end infinite;
+            color: #F5C2C9;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .status-pill {
+            font-size: 9px;
+            font-family: 'JetBrains Mono', Consolas, monospace;
+            padding: 3px 8px;
+            border-radius: 2px;
+            border: 1px solid #29292F;
+            background: rgba(28, 28, 33, 0.8);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between select-none ambient-bg">
+
+    <!-- Panic Overlay container -->
+    <div id="panic-overlay" class="fixed inset-0 bg-red-800/30 z-50 opacity-0 hidden panic-flash"></div>
+    <div id="panic-top-line" class="fixed top-0 left-0 right-0 h-1 bg-red-600 z-50 hidden shadow-[0_0_10px_#FF3B5C]"></div>
+
+    <!-- MAIN ROOT WRAPPER -->
+    <div class="flex-grow flex flex-col lg:flex-row min-h-0 relative">
+        
+        <!-- SIDE NAVIGATION BAR (Left Column) -->
+        <aside class="w-full lg:w-64 bg-surface/95 border-r border-border flex flex-col shrink-0 backdrop-blur-sm">
+            <!-- Brand Logo -->
+            <div class="p-6 border-b border-border flex items-center gap-3">
+                <div class="w-8 h-8 bg-maroon rounded-[3px] flex items-center justify-center text-white font-bold text-sm tracking-tighter brand-glow">G</div>
+                <div>
+                    <h1 class="font-bold text-sm tracking-wide text-white leading-none">GUARDIAN MESH</h1>
+                    <span class="text-[10px] text-slate font-mono block mt-1 tracking-widest">環境中継システム</span>
+                </div>
+            </div>
+
+            <!-- Pages Nav List -->
+            <nav class="flex-grow py-4 space-y-1 text-xs">
+                <button onclick="switchPage(1)" id="nav-btn-1" class="w-full text-left px-6 py-3 text-slate hover:text-white hover:bg-raised/40 transition-all font-semibold flex items-center gap-3 tab-btn-active">
+                    <span>01</span> <span>INTRODUCTION / 概要</span>
+                </button>
+                <button onclick="switchPage(2)" id="nav-btn-2" class="w-full text-left px-6 py-3 text-slate hover:text-white hover:bg-raised/40 transition-all font-semibold flex items-center gap-3">
+                    <span>02</span> <span>3D MESH SIMULATION / 3Dシミュレーション</span>
+                </button>
+                <button onclick="switchPage(3)" id="nav-btn-3" class="w-full text-left px-6 py-3 text-slate hover:text-white hover:bg-raised/40 transition-all font-semibold flex items-center gap-3">
+                    <span>03</span> <span>REAL-TIME TELEMETRY / リアルタイムデータ</span>
+                </button>
+                <button onclick="switchPage(4)" id="nav-btn-4" class="w-full text-left px-6 py-3 text-slate hover:text-white hover:bg-raised/40 transition-all font-semibold flex items-center gap-3">
+                    <span>04</span> <span>ANALYTICS & GRAPHS / グラフ解析</span>
+                </button>
+                <button onclick="switchPage(5)" id="nav-btn-5" class="w-full text-left px-6 py-3 text-slate hover:text-white hover:bg-raised/40 transition-all font-semibold flex items-center gap-3">
+                    <span>05</span> <span>AI & SCENARIO / AI対話・シナリオ</span>
+                </button>
+                <button onclick="switchPage(6)" id="nav-btn-6" class="w-full text-left px-6 py-3 text-slate hover:text-white hover:bg-raised/40 transition-all font-semibold flex items-center gap-3">
+                    <span>06</span> <span>CSV EXPORTER / ログ出力</span>
+                </button>
+                <button onclick="switchPage(7)" id="nav-btn-7" class="w-full text-left px-6 py-3 text-slate hover:text-white hover:bg-raised/40 transition-all font-semibold flex items-center gap-3">
+                    <span>07</span> <span>THANKS / 謝辞</span>
+                </button>
+            </nav>
+
+            <!-- Diagnostic status sidebar bottom -->
+            <div class="p-4 border-t border-border bg-void/50 text-[10px] font-mono text-slate space-y-1 shrink-0">
+                <div class="flex justify-between">
+                    <span>SERVER LINK:</span>
+                    <span id="ws-status-badge" class="text-red font-bold">DISCONNECTED</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>STORE-FORWARD:</span>
+                    <span id="queue-status-badge" class="text-green font-bold">EMPTY (0)</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CENTER VIEWPORT (Dynamic page screens container) -->
+        <main class="flex-grow flex flex-col p-6 min-h-0 relative">
+            
+            <!-- Global header bar -->
+            <header class="w-full flex justify-between items-center mb-4 pb-4 shrink-0 relative">
+                <div class="header-accent absolute bottom-0 left-0 right-0"></div>
+                <div>
+                    <h2 id="page-title-header" class="text-base font-bold text-white tracking-wider">PROJECT INTRODUCTION</h2>
+                    <span id="page-subtitle-header" class="text-[10px] text-slate tracking-widest font-mono">PAGE 01 | 概要紹介</span>
+                </div>
+                
+                <div class="flex items-center gap-3">
+                    <span id="header-link-pill" class="status-pill text-green hidden sm:inline">● MESH LIVE</span>
+                    <div id="header-clock" class="font-mono text-xs text-pink tracking-wider px-3 py-1.5 border border-border/60 rounded-[3px] bg-void/50">2026-06-09 20:18:58</div>
+                    
+                    <!-- Settings Trigger Button -->
+                    <button onclick="toggleSlidePanel(true)" class="flex items-center gap-1.5 bg-surface hover:bg-raised border border-border px-3 py-1.5 rounded-[3px] text-xs font-semibold text-white transition-colors">
+                        <svg class="w-4 h-4 text-pink" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <span>CONTROL INTERFACE</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- PAGE 1: INTRODUCTION -->
+            <div id="page-section-1" class="page-container w-full flex-grow flex flex-col justify-between text-xs text-slate space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center flex-grow">
+                    <!-- Left: Core description -->
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-maroon"></span>
+                            <span class="font-mono text-[10px] text-pink font-bold uppercase tracking-widest">Autonomous Sentinel Grid</span>
+                        </div>
+                        <h3 class="text-xl font-bold text-white leading-tight">Guardian Mesh Environmental Ground Station</h3>
+                        <p class="leading-relaxed">
+                            Welcome to the Guardian Mesh monitoring network. This professional-grade core terminal provides telemetry gathering, emergency dispatching, and ad-hoc packet journey maps across disaster zones.
+                        </p>
+                        <p class="leading-relaxed">
+                            By utilizing low-power sensor arrays connected through secondary mesh relay pathways, the system maintains structural monitoring in remote sectors even when primary communication systems are damaged.
+                        </p>
+                        
+                        <div class="bg-surface border border-border p-4 rounded-[3px] space-y-2">
+                            <h4 class="font-bold text-white text-[11px]">PROJECT OBJECTIVES / プロジェクト目的</h4>
+                            <ul class="list-disc pl-4 space-y-1 font-mono text-[10px]">
+                                <li>Autonomous monitoring of fire, humidity, and barometric anomalies.</li>
+                                <li>Resilient local packet caching under simulated ground station failovers.</li>
+                                <li>Dynamic edge health metrics modeling and AI dispatch recommendations.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Right: Visual architectural block diagram -->
+                    <div class="bg-surface border border-border p-6 rounded-[3px] flex flex-col justify-center h-full panel-glow">
+                        <h4 class="font-bold text-white text-xs mb-4 border-b border-border pb-1.5 font-mono uppercase tracking-wide">ESP32 Relay Chain Architecture</h4>
+                        
+                        <div class="space-y-2 font-mono text-[10px]">
+                            <div class="arch-step flex items-center justify-between p-2.5 rounded-[2px]">
+                                <span class="font-bold text-pink">01. HANDHELD UNIT</span>
+                                <span class="text-slate">OLED + Panic Messages (ESP-NOW)</span>
+                            </div>
+                            <div class="flex items-center justify-center text-maroon text-[10px] leading-none">▼ ESP-NOW</div>
+                            <div class="arch-step flex items-center justify-between p-2.5 rounded-[2px]">
+                                <span class="font-bold text-pink">02. MAIN SENSOR ESP32</span>
+                                <span class="text-slate">All Sensors + Aggregation</span>
+                            </div>
+                            <div class="flex items-center justify-center text-maroon text-[10px] leading-none">▼ nRF24</div>
+                            <div class="arch-step flex items-center justify-between p-2.5 rounded-[2px]">
+                                <span class="font-bold text-pink">03. RELAY ESP32</span>
+                                <span class="text-slate">nRF Bridge &rarr; WiFi Uplink</span>
+                            </div>
+                            <div class="flex items-center justify-center text-maroon text-[10px] leading-none">▼ WiFi</div>
+                            <div class="arch-step flex items-center justify-between p-2.5 rounded-[2px]">
+                                <span class="font-bold text-pink">04. GROUND STATION ESP</span>
+                                <span class="text-slate">HTTP POST to Web Server</span>
+                            </div>
+                            <div class="flex items-center justify-center text-maroon text-[10px] leading-none">▼</div>
+                            <div class="arch-step flex items-center justify-between p-2.5 rounded-[2px] border-maroon/40">
+                                <span class="font-bold text-white">05. GUARDIAN DASHBOARD</span>
+                                <span class="text-pink">Live Telemetry + AI + Panic</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-border flex justify-end shrink-0">
+                    <button onclick="switchPage(2)" class="bg-maroon hover:bg-maroon-dim text-white font-semibold px-6 py-2.5 rounded-[3px] transition-colors flex items-center gap-1.5">
+                        <span>PROCEED TO SIMULATION</span>
+                        <span>&rarr;</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- PAGE 2: 3D SIMULATION -->
+            <div id="page-section-2" class="page-container w-full flex-grow flex flex-col justify-between hidden">
+                <div class="w-full flex-grow relative bg-surface border border-border rounded-[3px] overflow-hidden min-h-[350px] panel-glow">
+                    <canvas id="virtual-3d-canvas" class="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+                    <canvas id="radar-overlay-canvas" class="absolute inset-0 w-full h-full pointer-events-none opacity-0 transition-opacity duration-500"></canvas>
+                    
+                    <div class="absolute top-3 right-3 z-10">
+                        <button id="btn-radar-toggle" onclick="toggleRadarOverlay()" class="text-[10px] font-mono font-bold px-3 py-1.5 rounded-[3px] border border-border bg-void/90 text-slate hover:text-white transition-all tracking-wide">
+                            ◉ RADAR OVERLAY
+                        </button>
+                    </div>
+
+                    <div class="absolute bottom-3 left-3 bg-void/90 border border-border p-2 font-mono text-[9px] text-slate rounded-[2px] pointer-events-none backdrop-blur-sm">
+                        3D_MATRIX: ACTIVE | RENDER: ORTHO_PROJ | <span id="radar-status-label">RADAR: OFF</span>
+                    </div>
+
+                    <div class="absolute top-3 left-3 w-64 bg-void/95 border border-border p-3 rounded-[3px] text-[10px] text-slate pointer-events-none space-y-1.5 backdrop-blur-sm panel-glow">
+                        <div class="font-bold text-white uppercase text-[11px] border-b border-border pb-1 flex justify-between">
+                            <span>Virtual Network Graph</span>
+                            <span class="text-pink">3D Simulation</span>
+                        </div>
+                        <p class="leading-relaxed">
+                            A dynamic 3D rendering of the deployed network. Drag or hover to inspect pathways. Nodes are connected via LoRa relay connections. Highlighting pathing shows data hop routes.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-border flex justify-between items-center shrink-0 mt-4">
+                    <span class="text-[10px] text-slate font-mono">Use drag interactions on the visualizer to rotate around the vertical axis.</span>
+                    <button onclick="switchPage(3)" class="bg-maroon hover:bg-maroon-dim text-white font-semibold px-6 py-2 rounded-[3px] transition-colors">
+                        VIEW REAL DATA &rarr;
+                    </button>
+                </div>
+            </div>
+
+            <!-- PAGE 3: REAL DATA -->
+            <div id="page-section-3" class="page-container w-full flex-grow flex flex-col justify-between hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-grow min-h-0">
+                    
+                    <!-- Left: 3x2 Sensor Grid Cards (lg:col-span-8) -->
+                    <div class="lg:col-span-8 flex flex-col gap-4 min-h-0 overflow-y-auto pr-1">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
+                            <!-- Temp Card -->
+                            <div id="grid-temp-card" class="sensor-card border border-border p-4 rounded-[3px] flex flex-col justify-between relative transition-all panel-glow">
+                                <div class="flex justify-between items-center border-b border-border pb-1.5 mb-2">
+                                    <span class="text-pink font-bold">🌡️</span>
+                                    <span class="font-mono text-[9px] text-slate tracking-wider">TEMPERATURE</span>
+                                    <span class="font-jp text-[10px] text-slate">温度</span>
+                                </div>
+                                <div class="flex items-baseline my-2">
+                                    <span id="readout-temp" class="telemetry-value font-mono text-3xl font-bold text-white">32.4</span>
+                                    <span class="font-mono text-xs text-pink ml-1">°C</span>
+                                </div>
+                                <div class="flex justify-between text-[9px] font-mono text-slate mt-2">
+                                    <span id="readout-temp-trend" class="text-green">↑ 2.3% (10m)</span>
+                                    <span>Threshold: 40°C</span>
+                                </div>
+                                <div id="card-alert-line-temp" class="absolute bottom-0 left-0 right-0 h-0.5 bg-maroon"></div>
+                            </div>
+
+                            <!-- Hum Card -->
+                            <div id="grid-hum-card" class="sensor-card border border-border p-4 rounded-[3px] flex flex-col justify-between relative transition-all panel-glow">
+                                <div class="flex justify-between items-center border-b border-border pb-1.5 mb-2">
+                                    <span class="text-pink font-bold">💧</span>
+                                    <span class="font-mono text-[9px] text-slate tracking-wider">HUMIDITY</span>
+                                    <span class="font-jp text-[10px] text-slate">湿度</span>
+                                </div>
+                                <div class="flex items-baseline my-2">
+                                    <span id="readout-hum" class="telemetry-value font-mono text-3xl font-bold text-white">67.2</span>
+                                    <span class="font-mono text-xs text-pink ml-1">%</span>
+                                </div>
+                                <div class="flex justify-between text-[9px] font-mono text-slate mt-2">
+                                    <span id="readout-hum-trend" class="text-slate">&rarr; 0.0% (10m)</span>
+                                    <span>Threshold: 20-90%</span>
+                                </div>
+                                <div id="card-alert-line-hum" class="absolute bottom-0 left-0 right-0 h-0.5 bg-maroon"></div>
+                            </div>
+
+                            <!-- Pres Card -->
+                            <div id="grid-pres-card" class="sensor-card border border-border p-4 rounded-[3px] flex flex-col justify-between relative transition-all panel-glow">
+                                <div class="flex justify-between items-center border-b border-border pb-1.5 mb-2">
+                                    <span class="text-pink font-bold">🎈</span>
+                                    <span class="font-mono text-[9px] text-slate tracking-wider">PRESSURE</span>
+                                    <span class="font-jp text-[10px] text-slate">大気圧</span>
+                                </div>
+                                <div class="flex items-baseline my-2">
+                                    <span id="readout-pres" class="telemetry-value font-mono text-3xl font-bold text-white">1012.5</span>
+                                    <span class="font-mono text-xs text-pink ml-1">hPa</span>
+                                </div>
+                                <div class="flex justify-between text-[9px] font-mono text-slate mt-2">
+                                    <span id="readout-pres-trend" class="text-red">↓ -0.8% (10m)</span>
+                                    <span>Threshold: Δ5hPa</span>
+                                </div>
+                                <div id="card-alert-line-pres" class="absolute bottom-0 left-0 right-0 h-0.5 bg-maroon"></div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
+                            <!-- AQI Card -->
+                            <div id="grid-aqi-card" class="sensor-card border border-border p-4 rounded-[3px] flex flex-col justify-between relative transition-all panel-glow">
+                                <div class="flex justify-between items-center border-b border-border pb-1.5 mb-2">
+                                    <span class="text-pink font-bold">🍃</span>
+                                    <span class="font-mono text-[9px] text-slate tracking-wider">AIR QUALITY</span>
+                                    <span class="font-jp text-[10px] text-slate">空気質</span>
+                                </div>
+                                <div class="flex items-baseline my-2">
+                                    <span id="readout-aqi" class="telemetry-value font-mono text-3xl font-bold text-white">85</span>
+                                    <span class="font-mono text-xs text-pink ml-1">AQI</span>
+                                </div>
+                                <div class="flex justify-between text-[9px] font-mono text-slate mt-2">
+                                    <span id="readout-aqi-trend" class="text-green">↑ -4.2% (10m)</span>
+                                    <span>Threshold: 150</span>
+                                </div>
+                                <div id="card-alert-line-aqi" class="absolute bottom-0 left-0 right-0 h-0.5 bg-maroon"></div>
+                            </div>
+
+                            <!-- Rain Card -->
+                            <div id="grid-rain-card" class="sensor-card border border-border p-4 rounded-[3px] flex flex-col justify-between relative transition-all panel-glow">
+                                <div class="flex justify-between items-center border-b border-border pb-1.5 mb-2">
+                                    <span class="text-pink font-bold">🌧️</span>
+                                    <span class="font-mono text-[9px] text-slate tracking-wider">RAINFALL</span>
+                                    <span class="font-jp text-[10px] text-slate">降水量</span>
+                                </div>
+                                <div class="flex items-baseline my-2">
+                                    <span id="readout-rain" class="telemetry-value font-mono text-3xl font-bold text-white">2.1</span>
+                                    <span class="font-mono text-xs text-pink ml-1">mm/h</span>
+                                </div>
+                                <div class="flex justify-between text-[9px] font-mono text-slate mt-2">
+                                    <span id="readout-rain-trend" class="text-slate">&rarr; 0.0% (10m)</span>
+                                    <span>Threshold: 50mm</span>
+                                </div>
+                                <div id="card-alert-line-rain" class="absolute bottom-0 left-0 right-0 h-0.5 bg-maroon"></div>
+                            </div>
+
+                            <!-- Wind Card -->
+                            <div id="grid-wind-card" class="sensor-card border border-border p-4 rounded-[3px] flex flex-col justify-between relative transition-all panel-glow">
+                                <div class="flex justify-between items-center border-b border-border pb-1.5 mb-2">
+                                    <span class="text-pink font-bold">🌀</span>
+                                    <span class="font-mono text-[9px] text-slate tracking-wider">WIND SPEED</span>
+                                    <span class="font-jp text-[10px] text-slate">風速</span>
+                                </div>
+                                <div class="flex items-baseline my-2">
+                                    <span id="readout-wind" class="telemetry-value font-mono text-3xl font-bold text-white">18.3</span>
+                                    <span class="font-mono text-xs text-pink ml-1">km/h</span>
+                                </div>
+                                <div class="flex justify-between text-[9px] font-mono text-slate mt-2">
+                                    <span id="readout-wind-trend" class="text-red">↑ +2.5% (10m)</span>
+                                    <span>Threshold: 60km</span>
+                                </div>
+                                <div id="card-alert-line-wind" class="absolute bottom-0 left-0 right-0 h-0.5 bg-maroon"></div>
+                            </div>
+                        </div>
+
+                        <!-- Active Alarms listing -->
+                        <div class="bg-surface border border-border p-4 rounded-[3px] flex flex-col min-h-[140px] panel-glow">
+                            <h4 class="font-bold text-white text-xs mb-3 border-b border-border pb-1 font-mono uppercase tracking-wide flex justify-between items-center">
+                                <span>ACTIVE PANIC ALERTS</span>
+                                <span class="text-pink font-normal text-[9px]">現在発生中の緊急警報</span>
+                            </h4>
+                            <div id="active-panic-container" class="space-y-2 overflow-y-auto max-h-[120px] pr-1">
+                                <div class="text-center text-[10px] text-slate py-4 font-mono">No active emergencies found. Operating state nominal.</div>
+                            </div>
+                        </div>
+
+                        <!-- Packet Journey Log -->
+                        <div class="bg-surface border border-border p-4 rounded-[3px] panel-glow">
+                            <div class="flex justify-between items-center mb-3 border-b border-border pb-1">
+                                <h4 class="font-bold text-white text-xs font-mono uppercase tracking-wide">PACKET JOURNEY LOG</h4>
+                                <button onclick="replayLastPacketPath()" class="text-[9px] font-mono text-pink hover:text-white border border-border px-2 py-0.5 rounded-[2px] transition-colors">▶ REPLAY PATH</button>
+                            </div>
+                            <div class="overflow-x-auto max-h-[100px] overflow-y-auto">
+                                <table class="w-full text-left font-mono text-[9px]">
+                                    <thead class="text-slate border-b border-border/50 sticky top-0 bg-surface">
+                                        <tr>
+                                            <th class="pb-1.5 pr-2">PACKET</th>
+                                            <th class="pb-1.5 pr-2">NODE</th>
+                                            <th class="pb-1.5 pr-2">HOPS</th>
+                                            <th class="pb-1.5 pr-2">LATENCY</th>
+                                            <th class="pb-1.5">STATUS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="packet-journey-rows" class="text-slate divide-y divide-border/30">
+                                        <tr><td colspan="5" class="py-3 text-center text-slate">Awaiting packets…</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- External Intelligence Strip -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div class="intel-tile panel-glow">
+                                <div class="flex items-center gap-2 mb-1.5">
+                                    <div class="live-dot" id="intel-radar-dot"></div>
+                                    <span class="text-[9px] font-mono text-slate uppercase tracking-wider">Radar</span>
+                                </div>
+                                <div id="intel-radar-val" class="text-[11px] font-bold text-white font-mono">RainViewer LIVE</div>
+                                <div class="text-[8px] text-slate mt-0.5">Global composite</div>
+                            </div>
+                            <div class="intel-tile panel-glow">
+                                <div class="flex items-center gap-2 mb-1.5">
+                                    <div class="live-dot"></div>
+                                    <span class="text-[9px] font-mono text-slate uppercase tracking-wider">Forecast</span>
+                                </div>
+                                <div id="intel-precip-val" class="text-[11px] font-bold text-white font-mono">— mm/h</div>
+                                <div class="text-[8px] text-slate mt-0.5">Open-Meteo 1h</div>
+                            </div>
+                            <div class="intel-tile panel-glow">
+                                <div class="flex items-center gap-2 mb-1.5">
+                                    <div class="live-dot" id="intel-aqi-dot"></div>
+                                    <span class="text-[9px] font-mono text-slate uppercase tracking-wider">Air Quality</span>
+                                </div>
+                                <div id="intel-aqi-val" class="text-[11px] font-bold text-white font-mono">— AQI</div>
+                                <div class="text-[8px] text-slate mt-0.5">AQICN / Local</div>
+                            </div>
+                            <div class="intel-tile panel-glow">
+                                <div class="flex items-center gap-2 mb-1.5">
+                                    <div class="live-dot" id="intel-firms-dot"></div>
+                                    <span class="text-[9px] font-mono text-slate uppercase tracking-wider">Fire Hotspots</span>
+                                </div>
+                                <div id="intel-firms-val" class="text-[11px] font-bold text-white font-mono">0 detected</div>
+                                <div class="text-[8px] text-slate mt-0.5">NASA FIRMS 50km</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Nodes Status telemetry table (lg:col-span-4) -->
+                    <div class="lg:col-span-4 flex flex-col bg-surface border border-border p-4 rounded-[3px] min-h-0 panel-glow">
+                        <h4 class="font-bold text-white text-xs mb-3 border-b border-border pb-1 font-mono uppercase tracking-wide">NODE REGISTRY STATUS</h4>
+                        <div id="node-registry-list" class="flex-grow overflow-y-auto font-mono text-[10px] text-slate pr-1 space-y-3">
+                            
+                            <div class="border border-maroon/30 bg-void/50 p-3 rounded-[2px] panel-glow">
+                                <div class="flex justify-between border-b border-border pb-1 mb-1.5">
+                                    <span class="font-bold text-pink">HANDHELD_01</span>
+                                    <span class="text-pink font-bold text-[9px]">◉ PANIC CAPABLE</span>
+                                </div>
+                                <div class="space-y-0.5 text-[9px]">
+                                    <div>NAME: Ranger Patrol Unit 1</div>
+                                    <div>BATTERY: 92% | RSSI: -48 dBm</div>
+                                    <div>HEALTH: <span class="text-green font-bold">96%</span></div>
+                                </div>
+                            </div>
+
+                            <div class="border border-border bg-void/50 p-3 rounded-[2px]">
+                                <div class="flex justify-between border-b border-border pb-1 mb-1.5">
+                                    <span class="font-bold text-white">NODE_A</span>
+                                    <span class="text-green font-bold">● ONLINE</span>
+                                </div>
+                                <div class="space-y-0.5 text-[9px]">
+                                    <div>NAME: North Ridge Watch</div>
+                                    <div>BATTERY: 78% | RSSI: -62 dBm</div>
+                                    <div>HEALTH: <span class="text-green font-bold">92%</span></div>
+                                </div>
+                            </div>
+
+                            <div class="border border-border bg-void/50 p-3 rounded-[2px]">
+                                <div class="flex justify-between border-b border-border pb-1 mb-1.5">
+                                    <span class="font-bold text-white">NODE_B</span>
+                                    <span class="text-green font-bold">● ONLINE</span>
+                                </div>
+                                <div class="space-y-0.5 text-[9px]">
+                                    <div>NAME: Forest Edge Beacon</div>
+                                    <div>BATTERY: 45% | RSSI: -74 dBm</div>
+                                    <div>HEALTH: <span class="text-pink font-bold">76%</span></div>
+                                </div>
+                            </div>
+
+                            <div class="border border-border bg-void/50 p-3 rounded-[2px]">
+                                <div class="flex justify-between border-b border-border pb-1 mb-1.5">
+                                    <span class="font-bold text-white">NODE_C</span>
+                                    <span class="text-green font-bold">● ONLINE</span>
+                                </div>
+                                <div class="space-y-0.5 text-[9px]">
+                                    <div>NAME: Canyon Sentinel</div>
+                                    <div>BATTERY: 91% | RSSI: -58 dBm</div>
+                                    <div>HEALTH: <span class="text-green font-bold">98%</span></div>
+                                </div>
+                            </div>
+
+                            <div class="border border-border bg-void/50 p-3 rounded-[2px]">
+                                <div class="flex justify-between border-b border-border pb-1 mb-1.5">
+                                    <span class="font-bold text-slate">NODE_D</span>
+                                    <span class="text-slate font-bold">○ OFFLINE</span>
+                                </div>
+                                <div class="space-y-0.5 text-[9px]">
+                                    <div>NAME: West Meadow Guard</div>
+                                    <div>BATTERY: --% | RSSI: --- dBm</div>
+                                    <div>HEALTH: <span class="text-red font-bold">0%</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="pt-4 border-t border-border flex justify-end shrink-0 mt-4">
+                    <button onclick="switchPage(4)" class="bg-maroon hover:bg-maroon-dim text-white font-semibold px-6 py-2 rounded-[3px] transition-colors">
+                        GO TO ANALYTICS &rarr;
+                    </button>
+                </div>
+            </div>
+
+            <!-- PAGE 4: HISTORY & GRAPHS -->
+            <div id="page-section-4" class="page-container w-full flex-grow flex flex-col justify-between hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-grow min-h-0 overflow-y-auto pr-1">
+                    
+                    <!-- Graph 1: Temperature Wave (Curve Line Chart) -->
+                    <div class="chart-panel border border-border p-4 rounded-[3px] flex flex-col min-h-[200px] panel-glow">
+                        <h5 class="font-bold text-white text-[11px] mb-2 font-mono uppercase tracking-wide">Temp Trend (Wave Curve) / 温度波形</h5>
+                        <div class="w-full flex-grow relative min-h-[140px]">
+                            <canvas id="chart-temp-wave"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Graph 2: Humidity Levels (Bar Chart) -->
+                    <div class="chart-panel border border-border p-4 rounded-[3px] flex flex-col min-h-[200px] panel-glow">
+                        <h5 class="font-bold text-white text-[11px] mb-2 font-mono uppercase tracking-wide">Humidity Levels (Bar Chart) / 湿度推移</h5>
+                        <div class="w-full flex-grow relative min-h-[140px]">
+                            <canvas id="chart-hum-bar"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Graph 3: Atmospheric Pressure (Stacked Line Chart) -->
+                    <div class="chart-panel border border-border p-4 rounded-[3px] flex flex-col min-h-[200px] panel-glow">
+                        <h5 class="font-bold text-white text-[11px] mb-2 font-mono uppercase tracking-wide">Atmospheric Pressure (Stacked Lines) / 気圧積層</h5>
+                        <div class="w-full flex-grow relative min-h-[140px]">
+                            <canvas id="chart-pres-stacked"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Graph 4: Air Quality Index (Pie Chart) -->
+                    <div class="chart-panel border border-border p-4 rounded-[3px] flex flex-col min-h-[200px] panel-glow">
+                        <h5 class="font-bold text-white text-[11px] mb-2 font-mono uppercase tracking-wide">Air Quality Share (Pie Chart) / 空気質分類</h5>
+                        <div class="w-full flex-grow relative min-h-[140px] flex justify-center items-center">
+                            <div class="w-40 h-40">
+                                <canvas id="chart-aqi-pie"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="pt-4 border-t border-border flex justify-end shrink-0 mt-4">
+                    <button onclick="switchPage(5)" class="bg-maroon hover:bg-maroon-dim text-white font-semibold px-6 py-2 rounded-[3px] transition-colors">
+                        PROCEED TO AI & SCENARIOS &rarr;
+                    </button>
+                </div>
+            </div>
+
+            <!-- PAGE 5: AI CONVERSATION & SCENARIOS -->
+            <div id="page-section-5" class="page-container w-full flex-grow flex flex-col justify-between hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow min-h-0">
+                    
+                    <!-- Left: Scenario Creator panel (lg:col-span-5) -->
+                    <div class="lg:col-span-5 bg-surface border border-border p-4 rounded-[3px] flex flex-col justify-between min-h-0 panel-glow">
+                        <div>
+                            <h4 class="font-bold text-white text-xs mb-3 border-b border-border pb-1 font-mono uppercase tracking-wide">SIMULATED SCENARIO CREATOR</h4>
+                            <p class="text-[11px] text-slate leading-relaxed mb-4">
+                                Select or configure an environmental crisis scenario. The system will mock anomalous telemetry, feed details to the AI Assistant, and request an evaluation report.
+                            </p>
+                            
+                            <div class="space-y-4 text-xs">
+                                <div>
+                                    <label class="block text-slate font-mono text-[10px] mb-1">Pre-configured Scenario</label>
+                                    <select id="sim-scenario-select" onchange="loadScenarioTemplate()" class="w-full bg-void border border-border p-2 rounded-[2px] text-white focus:outline-none focus:border-maroon">
+                                        <option value="dry_wind">Dry Forest Wind Anomaly (Low Hum, High Temp)</option>
+                                        <option value="storm">Torrential Cloudburst Storm (High Rain, Low Pres)</option>
+                                        <option value="smoke">Combustion Smoke Hazard (Elevated AQI)</option>
+                                        <option value="custom">Custom Scenario Builder</option>
+                                    </select>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-slate font-mono text-[10px] mb-1">Temperature (°C)</label>
+                                        <input id="sc-temp" type="number" step="0.1" value="44.2" class="w-full bg-void border border-border p-1.5 text-white rounded-[2px]">
+                                    </div>
+                                    <div>
+                                        <label class="block text-slate font-mono text-[10px] mb-1">Humidity (%)</label>
+                                        <input id="sc-hum" type="number" step="1" value="14" class="w-full bg-void border border-border p-1.5 text-white rounded-[2px]">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-slate font-mono text-[10px] mb-1">AQI Level</label>
+                                        <input id="sc-aqi" type="number" step="1" value="180" class="w-full bg-void border border-border p-1.5 text-white rounded-[2px]">
+                                    </div>
+                                    <div>
+                                        <label class="block text-slate font-mono text-[10px] mb-1">Wind Speed (km/h)</label>
+                                        <input id="sc-wind" type="number" step="0.1" value="52.4" class="w-full bg-void border border-border p-1.5 text-white rounded-[2px]">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-border mt-4">
+                            <button onclick="runScenarioAnalysis()" class="w-full bg-maroon hover:bg-maroon-dim text-white font-semibold py-2.5 rounded-[2px] transition-colors font-mono text-[11px] tracking-wide shadow-[0_0_10px_rgba(128,0,32,0.3)]">
+                                RUN SCENARIO ANALYSIS
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right: Streaming AI assistant (lg:col-span-7) -->
+                    <div class="lg:col-span-7 bg-surface border border-border p-4 rounded-[3px] flex flex-col justify-between min-h-0 panel-glow">
+                        <div>
+                            <h4 class="font-bold text-white text-xs mb-3 border-b border-border pb-1 font-mono uppercase tracking-wide flex justify-between">
+                                <span>GUARDIAN AI TERMINAL</span>
+                                <span id="ai-mode-badge" class="text-[9px] text-amber font-normal">SIMULATION MODE</span>
+                            </h4>
+                            
+                            <div id="chat-box" class="ai-terminal-glow h-[280px] border border-border p-3 rounded-[3px] overflow-y-auto space-y-2 text-xs mb-3 font-mono">
+                                <div class="border-l border-maroon pl-2.5 bg-raised/20 p-1.5 rounded-[2px]">
+                                    <div class="text-[9px] text-slate mb-1">00:00:00 | GUARDIAN AI</div>
+                                    <p class="text-[11px] text-white">System online. Telemetry registry parsed successfully. Enter a question or configure a simulated crisis scenario.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chat inputs -->
+                        <div class="flex gap-2">
+                            <input id="chat-input" type="text" placeholder="Ask AI regarding telemetry indices..." class="flex-grow bg-void border border-border px-3 py-2 text-xs text-white rounded-[2px] focus:outline-none focus:border-maroon">
+                            <button onclick="sendChatMessage()" class="bg-maroon hover:bg-maroon-dim text-white font-semibold px-4 py-2 text-xs rounded-[2px]">SEND</button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="pt-4 border-t border-border flex justify-end shrink-0 mt-4">
+                    <button onclick="switchPage(6)" class="bg-maroon hover:bg-maroon-dim text-white font-semibold px-6 py-2 rounded-[3px] transition-colors">
+                        GO TO EXPORT PANEL &rarr;
+                    </button>
+                </div>
+            </div>
+
+            <!-- PAGE 6: CSV EXPORTER -->
+            <div id="page-section-6" class="page-container w-full flex-grow flex flex-col justify-between hidden">
+                <div class="bg-surface border border-border p-6 rounded-[3px] flex-grow flex flex-col justify-between min-h-0">
+                    <div>
+                        <h4 class="font-bold text-white text-xs mb-3 border-b border-border pb-1.5 font-mono uppercase tracking-wide">Static File Telemetry Logger</h4>
+                        <p class="text-xs text-slate leading-relaxed mb-4 max-w-xl">
+                            All incoming sensor broadcasts are logged to a static JSON file (`telemetry_history.json`) on the server. You can view the raw rows or compile the compiled records directly to a standard CSV sheet.
+                        </p>
+
+                        <!-- Telemetry preview logs table -->
+                        <div class="border border-border rounded-[2px] bg-void/50 overflow-hidden text-[10px] font-mono">
+                            <div class="bg-raised p-2 border-b border-border font-bold text-slate flex justify-between">
+                                <span>LOG ENTRY LIST PREVIEW (MAX 5)</span>
+                                <span class="text-pink">Logged locally on node triggers</span>
+                            </div>
+                            <div class="overflow-y-auto max-h-[180px]">
+                                <table class="w-full text-left">
+                                    <thead class="bg-surface/50 border-b border-border/50 text-slate">
+                                        <tr>
+                                            <th class="p-2">TIMESTAMP</th>
+                                            <th class="p-2">NODE</th>
+                                            <th class="p-2">TEMP</th>
+                                            <th class="p-2">HUM</th>
+                                            <th class="p-2">PRES</th>
+                                            <th class="p-2">AQI</th>
+                                            <th class="p-2">WIND</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="csv-preview-rows" class="divide-y divide-border/20 text-slate">
+                                        <!-- Mock default starting rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-6 border-t border-border flex flex-col sm:flex-row gap-3 items-center flex-wrap">
+                        <span id="export-record-count" class="status-pill text-pink mr-auto">0 records</span>
+                        <button onclick="exportCSV()" class="bg-maroon hover:bg-maroon-dim text-white font-mono text-xs py-3.5 px-6 rounded-[3px] transition-all flex items-center justify-center gap-2 font-bold shadow-[0_0_12px_rgba(128,0,32,0.35)]">
+                            <span>📄 EXPORT CSV</span>
+                        </button>
+                        <button onclick="exportJSON()" class="bg-raised hover:bg-void border border-border text-white font-mono text-xs py-3.5 px-6 rounded-[3px] transition-all font-bold">
+                            <span>{ } EXPORT JSON</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-border flex justify-end shrink-0 mt-4">
+                    <button onclick="switchPage(7)" class="bg-maroon hover:bg-maroon-dim text-white font-semibold px-6 py-2 rounded-[3px] transition-colors">
+                        ACKNOWLEDGEMENTS &rarr;
+                    </button>
+                </div>
+            </div>
+
+            <!-- PAGE 7: THANKS -->
+            <div id="page-section-7" class="page-container w-full flex-grow flex items-center justify-center hidden">
+                <div class="bg-surface border border-border p-10 max-w-xl text-center space-y-6 relative rounded-[3px] panel-glow">
+                    <div class="flex justify-center mb-2">
+                        <span class="text-4xl text-maroon">⚜️</span>
+                    </div>
+                    <h1 class="font-bold text-2xl text-pink tracking-wide leading-none">
+                        THANK YOU / 感謝
+                    </h1>
+                    <span class="text-[10px] text-slate block tracking-widest font-mono">GUARDIAN MESH PROJECT COMPLETION</span>
+                    
+                    <p class="text-xs text-slate leading-relaxed">
+                        We express our deep appreciation to all reviewers, contributors, and judges. Guardian Mesh remains dedicated to providing disaster-resilient, offline-first telemetry mapping to secure communications and monitor severe environments.
+                    </p>
+
+                    <div class="border-t border-border pt-4 mt-4 text-[10px] text-slate font-mono max-w-xs mx-auto">
+                        <div class="font-bold text-white mb-2 uppercase text-[9px]">Compiled Technology Modules:</div>
+                        <div class="flex flex-wrap justify-center gap-1.5 text-pink">
+                            <span class="bg-void px-2 py-0.5 border border-border rounded-[2px]">FastAPI</span>
+                            <span class="bg-void px-2 py-0.5 border border-border rounded-[2px]">SQLite</span>
+                            <span class="bg-void px-2 py-0.5 border border-border rounded-[2px]">Claude AI</span>
+                            <span class="bg-void px-2 py-0.5 border border-border rounded-[2px]">Chart.js</span>
+                            <span class="bg-void px-2 py-0.5 border border-border rounded-[2px]">ESP32</span>
+                            <span class="bg-void px-2 py-0.5 border border-border rounded-[2px]">nRF24</span>
+                            <span class="bg-void px-2 py-0.5 border border-border rounded-[2px]">RainViewer</span>
+                        </div>
+                    </div>
+
+                    <div class="text-[9px] text-slate/50 font-mono pt-2">
+                        © 2026 GUARDIAN MESH | ALL SYSTEMS OPERATIONAL
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- ==========================================
+             RIGHT SLIDE-OVER CONTROL DRAWER
+             ========================================== -->
+        <div id="control-panel-overlay" onclick="toggleSlidePanel(false)" class="fixed inset-0 bg-black/60 z-40 hidden transition-opacity"></div>
+        
+        <aside id="control-panel-drawer" class="fixed top-0 right-0 h-full w-80 bg-surface border-l border-border z-50 p-6 flex flex-col justify-between transform translate-x-full drawer-transition shadow-2xl">
+            <div class="space-y-6">
+                <div class="flex justify-between items-center border-b border-border pb-3">
+                    <div>
+                        <h3 class="font-bold text-white text-sm">STATION COMMANDS</h3>
+                        <span class="text-[9px] text-slate font-mono uppercase tracking-widest">Manual adjustments & tests</span>
+                    </div>
+                    <button onclick="toggleSlidePanel(false)" class="text-slate hover:text-white text-lg leading-none">&times;</button>
+                </div>
+
+                <!-- Simulation Buttons Section -->
+                <div class="space-y-3">
+                    <h4 class="font-bold text-slate text-[10px] font-mono uppercase tracking-wider">Simulated Controls</h4>
+                    <button id="btn-toggle-station-link" onclick="toggleStationConnection()" class="w-full bg-raised hover:bg-void border border-border text-green font-semibold py-2 text-xs rounded-[3px] font-mono tracking-wide flex items-center justify-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-green animate-pulse"></span>
+                        <span>STATION LINK: ONLINE</span>
+                    </button>
+                    <button id="btn-fire-test" onclick="triggerMockFireSimulation()" class="w-full bg-maroon hover:bg-maroon-dim text-white font-semibold py-2 text-xs rounded-[3px] font-mono tracking-wide shadow-[0_0_8px_rgba(128,0,32,0.3)]">
+                        🔥 SIMULATE FOREST FIRE
+                    </button>
+                </div>
+
+                <!-- Active Node parameters override configuration form -->
+                <div class="space-y-4 pt-4 border-t border-border">
+                    <h4 class="font-bold text-slate text-[10px] font-mono uppercase tracking-wider">Node Telemetry Configuration</h4>
+                    
+                    <div class="space-y-2 text-xs">
+                        <div>
+                            <label class="block text-slate font-mono text-[9px] mb-1">Target Deployed Node</label>
+                            <select id="config-node-select" class="w-full bg-void border border-border p-2 rounded-[2px] text-white focus:outline-none focus:border-maroon">
+                                <option value="NODE_A">NODE_A (North Ridge Watch)</option>
+                                <option value="NODE_B">NODE_B (Forest Edge Beacon)</option>
+                                <option value="NODE_C">NODE_C (Canyon Sentinel)</option>
+                                <option value="HANDHELD_01">HANDHELD_01 (Ranger Patrol Unit 1)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-slate font-mono text-[9px] mb-1">Custom Display Name</label>
+                            <input id="config-node-name" type="text" class="w-full bg-void border border-border p-1.5 text-white rounded-[2px]">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-slate font-mono text-[9px] mb-1">Sample Rate (s)</label>
+                                <input id="config-node-sample" type="number" min="1" class="w-full bg-void border border-border p-1.5 text-white rounded-[2px]">
+                            </div>
+                            <div>
+                                <label class="block text-slate font-mono text-[9px] mb-1">TX Interval (s)</label>
+                                <input id="config-node-tx" type="number" min="1" class="w-full bg-void border border-border p-1.5 text-white rounded-[2px]">
+                            </div>
+                        </div>
+                        <button onclick="submitNodeConfiguration()" class="w-full bg-maroon hover:bg-maroon-dim text-white font-semibold py-2 text-xs rounded-[3px] font-mono mt-3">
+                            APPLY NODE CONFIG
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Credits and version at drawer bottom -->
+            <div class="text-[9px] text-slate/40 font-mono border-t border-border pt-3">
+                BUILD CONSOLE: v1.4.2_REDESIGN | HACKATHON CORE
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- ==========================================
+         DIAGNOSTIC SYSTEM HEALTH FOOTER
+         ========================================== -->
+    <footer class="w-full h-8 bg-void border-t border-border flex items-center justify-between px-6 text-[9px] font-mono text-slate z-40 shrink-0">
+        <div class="flex items-center gap-4">
+            <div>SYSTEM UPTIME: <span id="footer-uptime" class="text-pink">00:00:00</span></div>
+            <div>|</div>
+            <div>WS CHANNELS: <span class="text-green font-bold">STABLE</span></div>
+        </div>
+        <div class="flex items-center gap-4">
+            <div>SQLITE STORE: <span class="text-white">Active</span></div>
+            <div>|</div>
+            <div>JSON HISTORY: <span class="text-white">telemetry_history.json</span></div>
+            <div>|</div>
+            <div>GITHUB SECRETS API ENGINE: <span class="text-pink">LOADED</span></div>
+        </div>
+    </footer>
+
+    <!-- CLIENT SCRIPT LOGIC -->
+    <script>
+        // System variables
+        let currentTabId = 1;
+        let wsConn = null;
+        let isSlidePanelOpen = false;
+        let systemUptimeSeconds = 0;
+        let activeAlerts = [];
+        let systemApiKey = "";
+        let groundStationOnline = true;
+
+        // Visualizer 3D variables
+        const simCanvas = document.getElementById("virtual-3d-canvas");
+        const sCtx = simCanvas.getContext("2d");
+        let rotX = 0.5;
+        let rotY = 0.5;
+        let isDragging = false;
+        let startX, startY;
+        let nodePoints3D = [
+            { id: "GROUND", x: 0, y: 0, z: 0, size: 12, label: "GROUND STATION", color: "#800020" },
+            { id: "NODE_A", x: -80, y: 60, z: 40, size: 8, label: "NODE_A", color: "#F5C2C9" },
+            { id: "NODE_B", x: 80, y: 60, z: -40, size: 8, label: "NODE_B", color: "#F5C2C9" },
+            { id: "NODE_C", x: -80, y: -60, z: -40, size: 8, label: "NODE_C", color: "#F5C2C9" },
+            { id: "NODE_D", x: 80, y: -60, z: 40, size: 8, label: "NODE_D", color: "#8E8E93" },
+            { id: "HANDHELD_01", x: 0, y: 100, z: 80, size: 6, label: "HANDHELD_01", color: "#F5C2C9" }
+        ];
+        let animationPulseDots = [];
+        let radarOverlayEnabled = false;
+        let radarSweepAngle = 0;
+        let lastPacketRelayPath = "HANDHELD_01->NODE_B->GROUND";
+        let systemAlertState = "NOMINAL";
+        let alarmBeepInterval = null;
+        const DEFAULT_LAT = 35.6762;
+        const DEFAULT_LON = 139.6503;
+
+        const radarCanvas = document.getElementById("radar-overlay-canvas");
+        const radarCtx = radarCanvas ? radarCanvas.getContext("2d") : null;
+
+        // Graph instances Page 4
+        let chartTempWave = null;
+        let chartHumBar = null;
+        let chartPresStacked = null;
+        let chartAqiPie = null;
+
+        window.addEventListener("DOMContentLoaded", () => {
+            // Clock increment timer
+            setInterval(() => {
+                systemUptimeSeconds++;
+                const hrs = String(Math.floor(systemUptimeSeconds / 3600)).padStart(2, '0');
+                const mins = String(Math.floor((systemUptimeSeconds % 3600) / 60)).padStart(2, '0');
+                const secs = String(systemUptimeSeconds % 60).padStart(2, '0');
+                document.getElementById("footer-uptime").innerText = `${hrs}:${mins}:${secs}`;
+                
+                const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+                document.getElementById("header-clock").innerText = now;
+            }, 1000);
+
+            // Fetch GitHub secrets config file
+            fetchSecretsConfig();
+
+            // Sizing elements
+            resize3DCanvas();
+            resizeRadarCanvas();
+            window.addEventListener("resize", () => {
+                resize3DCanvas();
+                resizeRadarCanvas();
+            });
+
+            // Interactive 3D drag handlers
+            simCanvas.addEventListener("mousedown", (e) => {
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+            });
+            window.addEventListener("mouseup", () => isDragging = false);
+            window.addEventListener("mousemove", (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                rotY += dx * 0.005;
+                rotX += dy * 0.005;
+                startX = e.clientX;
+                startY = e.clientY;
+            });
+
+            // Start 3D visual renderer loop
+            requestAnimationFrame(render3DLoop);
+
+            // Connect Websocket channels
+            connectWebSocket();
+
+            loadHistoricalLogsPreview();
+            loadDefaultNodeConfigs();
+            loadPacketJourney();
+            loadExternalIntel();
+            fetchInitialState();
+            setInterval(loadExternalIntel, 300000);
+            setInterval(loadPacketJourney, 15000);
+
+            const headerPill = document.getElementById("header-link-pill");
+            if (headerPill) headerPill.classList.remove("hidden");
+        });
+
+        // Fetch config.json statically compiled via GitHub secrets
+        function fetchSecretsConfig() {
+            fetch("/config.json")
+            .then(res => res.json())
+            .then(data => {
+                if (data.anthropic_api_key) {
+                    systemApiKey = data.anthropic_api_key;
+                    const badge = document.getElementById("ai-mode-badge");
+                    if (badge) {
+                        badge.innerText = "LIVE AI";
+                        badge.className = "text-[9px] text-green font-normal";
+                    }
+                }
+            })
+            .catch(err => console.warn("config.json could not be loaded. AI assistant running in mock mode.", err));
+        }
+
+        // Toggles tab switching logic
+        function switchPage(pageIndex) {
+            // Hide all pages
+            for (let i = 1; i <= 7; i++) {
+                document.getElementById(`page-section-${i}`).classList.add("hidden");
+                const navBtn = document.getElementById(`nav-btn-${i}`);
+                if (navBtn) navBtn.className = "w-full text-left px-6 py-3 text-slate hover:text-white hover:bg-raised/40 transition-all font-semibold flex items-center gap-3";
+            }
+
+            // Show target
+            document.getElementById(`page-section-${pageIndex}`).classList.remove("hidden");
+            const activeNavBtn = document.getElementById(`nav-btn-${pageIndex}`);
+            if (activeNavBtn) activeNavBtn.className = "w-full text-left px-6 py-3 text-slate hover:text-white hover:bg-raised/40 transition-all font-semibold flex items-center gap-3 tab-btn-active";
+
+            // Update title headers
+            const pageTitles = [
+                ["PROJECT INTRODUCTION", "PAGE 01 | 概要紹介"],
+                ["VIRTUAL 3D NETWORK MAP", "PAGE 02 | 3Dシミュレーション"],
+                ["REAL-TIME TELEMETRY GRID", "PAGE 03 | リアルタイムデータ"],
+                ["HISTORICAL GRAPHS & TRENDS", "PAGE 04 | グラフ解析"],
+                ["GUARDIAN AI & SCENARIOS", "PAGE 05 | AI対話・シナリオ"],
+                ["CSV EXPORTER PANEL", "PAGE 06 | ログ出力"],
+                ["ACKNOWLEDGEMENTS", "PAGE 07 | 謝辞"]
+            ];
+            
+            document.getElementById("page-title-header").innerText = pageTitles[pageIndex - 1][0];
+            document.getElementById("page-subtitle-header").innerText = pageTitles[pageIndex - 1][1];
+
+            // Re-render Graph instances when Page 4 becomes active (Chart.js sizing fix)
+            if (pageIndex === 3) {
+                loadPacketJourney();
+                loadExternalIntel();
+            }
+            if (pageIndex === 4) {
+                setTimeout(initPageFourCharts, 100);
+            }
+        }
+
+        // Drawer slider control right panel
+        function toggleSlidePanel(open) {
+            isSlidePanelOpen = open;
+            const drawer = document.getElementById("control-panel-drawer");
+            const overlay = document.getElementById("control-panel-overlay");
+
+            if (open) {
+                drawer.classList.remove("translate-x-full");
+                overlay.classList.remove("hidden");
+            } else {
+                drawer.classList.add("translate-x-full");
+                overlay.classList.add("hidden");
+            }
+        }
+
+        // Connect Websocket server channel
+        function connectWebSocket() {
+            const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+            const host = window.location.host || "localhost:8000";
+            
+            document.getElementById("ws-status-badge").innerText = "CONNECTING...";
+            document.getElementById("ws-status-badge").className = "text-amber font-bold";
+
+            wsConn = new WebSocket(`${proto}//${host}/ws`);
+
+            wsConn.onopen = () => {
+                document.getElementById("ws-status-badge").innerText = "ONLINE";
+                document.getElementById("ws-status-badge").className = "text-green font-bold";
+            };
+
+            wsConn.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                
+                if (msg.type === "welcome") {
+                    setStationConnectionUI(msg.ground_station_online);
+                }
+                else if (msg.type === "sensor_update") {
+                    updateTelemetryUI(msg.data);
+                    loadHistoricalLogsPreview();
+                    loadPacketJourney();
+                }
+                else if (msg.type === "panic") {
+                    triggerPanicEvent(msg.data);
+                }
+                else if (msg.type === "queue_update") {
+                    document.getElementById("queue-status-badge").innerText = `CACHED (${msg.pending_count})`;
+                    document.getElementById("queue-status-badge").className = "text-amber font-bold";
+                }
+                else if (msg.type === "queue_flushed") {
+                    document.getElementById("queue-status-badge").innerText = "EMPTY (0)";
+                    document.getElementById("queue-status-badge").className = "text-green font-bold";
+                    loadHistoricalLogsPreview();
+                }
+                else if (msg.type === "network_status_toggle") {
+                    setStationConnectionUI(msg.online);
+                }
+                else if (msg.type === "ai_report_update") {
+                    displayScenarioAIReport(msg.data);
+                }
+            };
+
+            wsConn.onclose = () => {
+                document.getElementById("ws-status-badge").innerText = "DISCONNECTED";
+                document.getElementById("ws-status-badge").className = "text-red font-bold";
+                setTimeout(connectWebSocket, 5000);
+            };
+        }
+
+        // Update real data cards
+        function updateTelemetryUI(data) {
+            // Apply flashes animation to cards
+            const cardMap = {
+                temperature: "grid-temp-card",
+                humidity: "grid-hum-card",
+                pressure: "grid-pres-card",
+                aqi: "grid-aqi-card",
+                rainfall: "grid-rain-card",
+                wind_speed: "grid-wind-card"
+            };
+
+            Object.keys(cardMap).forEach(key => {
+                if (data[key] !== undefined) {
+                    const readout = document.getElementById(`readout-${key === "wind_speed" ? "wind" : (key === "rainfall" ? "rain" : key)}`);
+                    if (readout) {
+                        readout.innerText = data[key].toFixed(key === "aqi" ? 0 : 1);
+                        
+                        // Border pulse highlight
+                        const card = document.getElementById(cardMap[key]);
+                        if (card) {
+                            card.classList.add("telemetry-update-flash");
+                            setTimeout(() => card.classList.remove("telemetry-update-flash"), 400);
+                        }
+                    }
+                }
+            });
+
+            // Trigger moving pulse animation on 3D simulator map
+            if (data.relay_path) {
+                triggerSimulationPulse(data.relay_path, false);
+            }
+        }
+
+        // 3D Canvas visualizer logic
+        function resize3DCanvas() {
+            const container = simCanvas.parentNode;
+            simCanvas.width = container.getBoundingClientRect().width;
+            simCanvas.height = container.getBoundingClientRect().height;
+        }
+
+        function resizeRadarCanvas() {
+            if (!radarCanvas || !simCanvas) return;
+            radarCanvas.width = simCanvas.width;
+            radarCanvas.height = simCanvas.height;
+        }
+
+        function toggleRadarOverlay() {
+            radarOverlayEnabled = !radarOverlayEnabled;
+            const btn = document.getElementById("btn-radar-toggle");
+            const label = document.getElementById("radar-status-label");
+            if (radarOverlayEnabled) {
+                btn.classList.add("radar-toggle-active");
+                radarCanvas.classList.remove("opacity-0");
+                radarCanvas.classList.add("opacity-40");
+                if (label) label.innerText = "RADAR: LIVE";
+            } else {
+                btn.classList.remove("radar-toggle-active");
+                radarCanvas.classList.add("opacity-0");
+                radarCanvas.classList.remove("opacity-40");
+                if (label) label.innerText = "RADAR: OFF";
+                if (radarCtx) radarCtx.clearRect(0, 0, radarCanvas.width, radarCanvas.height);
+            }
+        }
+
+        function drawRadarSweep() {
+            if (!radarOverlayEnabled || !radarCtx || !radarCanvas.width) return;
+            const w = radarCanvas.width;
+            const h = radarCanvas.height;
+            const cx = w / 2;
+            const cy = h / 2;
+            const maxR = Math.min(w, h) * 0.42;
+
+            radarCtx.clearRect(0, 0, w, h);
+
+            for (let r = 40; r < maxR; r += 50) {
+                radarCtx.beginPath();
+                radarCtx.arc(cx, cy, r, 0, Math.PI * 2);
+                radarCtx.strokeStyle = "rgba(128, 0, 32, 0.25)";
+                radarCtx.lineWidth = 1;
+                radarCtx.stroke();
+            }
+
+            radarSweepAngle += 0.025;
+            const sweep = radarSweepAngle % (Math.PI * 2);
+            const grad = radarCtx.createConicGradient(sweep, cx, cy);
+            grad.addColorStop(0, "rgba(245, 194, 201, 0.35)");
+            grad.addColorStop(0.08, "rgba(128, 0, 32, 0.12)");
+            grad.addColorStop(1, "transparent");
+            radarCtx.fillStyle = grad;
+            radarCtx.beginPath();
+            radarCtx.arc(cx, cy, maxR, 0, Math.PI * 2);
+            radarCtx.fill();
+
+            [[0.3, 0.6], [-0.5, 0.2], [0.6, -0.4], [-0.2, -0.55]].forEach(([nx, ny]) => {
+                const px = cx + nx * maxR * 0.8;
+                const py = cy + ny * maxR * 0.8;
+                radarCtx.beginPath();
+                radarCtx.arc(px, py, 4 + Math.sin(Date.now() / 400 + nx) * 2, 0, Math.PI * 2);
+                radarCtx.fillStyle = "rgba(255, 59, 92, 0.7)";
+                radarCtx.shadowColor = "#FF3B5C";
+                radarCtx.shadowBlur = 12;
+                radarCtx.fill();
+                radarCtx.shadowBlur = 0;
+            });
+        }
+
+        function project3D(x, y, z) {
+            // Rotate around Y-axis
+            const cosY = Math.cos(rotY);
+            const sinY = Math.sin(rotY);
+            let rx = x * cosY - z * sinY;
+            let rz = x * sinY + z * cosY;
+
+            // Rotate around X-axis
+            const cosX = Math.cos(rotX);
+            const sinX = Math.sin(rotX);
+            let ry = y * cosX - rz * sinX;
+            rz = y * sinX + rz * cosX;
+
+            // Perspective scale projection mapping
+            const d = 300;
+            const scale = d / (d + rz);
+            const cx = simCanvas.width / 2;
+            const cy = simCanvas.height / 2;
+
+            return {
+                x: rx * scale + cx,
+                y: ry * scale + cy,
+                depth: rz
+            };
+        }
+
+        function render3DLoop() {
+            if (document.getElementById("page-section-2").classList.contains("hidden")) {
+                requestAnimationFrame(render3DLoop);
+                return;
+            }
+
+            sCtx.clearRect(0, 0, simCanvas.width, simCanvas.height);
+
+            // Draw professional grid lines on background base
+            sCtx.strokeStyle = "#1C1C21";
+            sCtx.lineWidth = 0.5;
+            const gridStep = 40;
+            for (let x = 0; x < simCanvas.width; x += gridStep) {
+                sCtx.beginPath();
+                sCtx.moveTo(x, 0);
+                sCtx.lineTo(x, simCanvas.height);
+                sCtx.stroke();
+            }
+            for (let y = 0; y < simCanvas.height; y += gridStep) {
+                sCtx.beginPath();
+                sCtx.moveTo(0, y);
+                sCtx.lineTo(simCanvas.width, y);
+                sCtx.stroke();
+            }
+
+            // Draw connection pathway lines
+            const connections = [
+                ["HANDHELD_01", "NODE_B"],
+                ["NODE_A", "NODE_B"],
+                ["NODE_B", "GROUND"],
+                ["NODE_C", "GROUND"],
+                ["NODE_A", "GROUND"]
+            ];
+
+            sCtx.lineWidth = 1;
+            connections.forEach(([fId, tId]) => {
+                const fNode = nodePoints3D.find(n => n.id === fId);
+                const tNode = nodePoints3D.find(n => n.id === tId);
+                if (!fNode || !tNode) return;
+
+                // Project points to 2D
+                const fp = project3D(fNode.x, fNode.y, fNode.z);
+                const tp = project3D(tNode.x, tNode.y, tNode.z);
+
+                sCtx.beginPath();
+                sCtx.moveTo(fp.x, fp.y);
+                sCtx.lineTo(tp.x, tp.y);
+                sCtx.strokeStyle = systemAlertState === "ALERT" ? "#800020" : "#29292F";
+                sCtx.stroke();
+            });
+
+            // Update and draw traveling data packets
+            updateAndDraw3DPathPulses();
+
+            // Draw node vectors (hexagons or circle points)
+            nodePoints3D.forEach(node => {
+                const p = project3D(node.x, node.y, node.z);
+
+                // Glow ring if alert active
+                if (systemAlertState === "ALERT" && node.id === "HANDHELD_01") {
+                    sCtx.beginPath();
+                    sCtx.arc(p.x, p.y, node.size + 6 + Math.sin(Date.now() / 150) * 3, 0, Math.PI * 2);
+                    sCtx.strokeStyle = "rgba(128, 0, 32, 0.4)";
+                    sCtx.lineWidth = 2;
+                    sCtx.stroke();
+                }
+
+                const nodeGrad = sCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, node.size);
+                nodeGrad.addColorStop(0, node.id === "GROUND" ? "#F5C2C9" : "#ffffff");
+                nodeGrad.addColorStop(0.5, node.color);
+                nodeGrad.addColorStop(1, node.id === "GROUND" ? "#6B1D2F" : "#800020");
+                sCtx.beginPath();
+                sCtx.arc(p.x, p.y, node.size, 0, Math.PI * 2);
+                sCtx.fillStyle = nodeGrad;
+                sCtx.shadowColor = node.id === "GROUND" ? "#800020" : "#F5C2C9";
+                sCtx.shadowBlur = node.id === "GROUND" ? 14 : 6;
+                sCtx.fill();
+                sCtx.shadowBlur = 0;
+                sCtx.strokeStyle = "#29292F";
+                sCtx.lineWidth = 1;
+                sCtx.stroke();
+
+                // Draw Node Label text
+                sCtx.fillStyle = "#F2F2F7";
+                sCtx.font = "bold 8px font-mono";
+                sCtx.textAlign = "center";
+                sCtx.fillText(node.id, p.x, p.y + node.size + 11);
+            });
+
+            drawRadarSweep();
+            requestAnimationFrame(render3DLoop);
+        }
+
+        function triggerSimulationPulse(relayPath, isAlert = false) {
+            if (relayPath) lastPacketRelayPath = relayPath;
+            // e.g. "NODE_A->NODE_B->GROUND"
+            const pathArray = relayPath.split("->");
+            if (pathArray.length < 2) return;
+
+            animationPulseDots.push({
+                path: pathArray,
+                startTime: Date.now(),
+                duration: 2000,
+                isAlert: isAlert
+            });
+        }
+
+        function updateAndDraw3DPathPulses() {
+            const now = Date.now();
+            animationPulseDots = animationPulseDots.filter(pulse => {
+                const elapsed = now - pulse.startTime;
+                const progress = elapsed / pulse.duration;
+
+                if (progress >= 1) return false;
+
+                const hops = pulse.path;
+                const segments = hops.length - 1;
+                const segProgress = progress * segments;
+                const index = Math.floor(segProgress);
+                const localProgress = segProgress - index;
+
+                const fromNode = nodePoints3D.find(n => n.id === hops[index]);
+                const toNode = nodePoints3D.find(n => n.id === hops[index + 1]);
+                if (!fromNode || !toNode) return false;
+
+                // Linear interpolation in 3D
+                const px = fromNode.x + localProgress * (toNode.x - fromNode.x);
+                const py = fromNode.y + localProgress * (toNode.y - fromNode.y);
+                const pz = fromNode.z + localProgress * (toNode.z - fromNode.z);
+
+                // Project to 2D
+                const p = project3D(px, py, pz);
+
+                sCtx.beginPath();
+                sCtx.arc(p.x, p.y, pulse.isAlert ? 5 : 3, 0, Math.PI * 2);
+                sCtx.fillStyle = pulse.isAlert ? "#800020" : "#F5C2C9";
+                sCtx.shadowColor = "#F5C2C9";
+                sCtx.shadowBlur = 6;
+                sCtx.fill();
+                sCtx.shadowBlur = 0; // Reset
+
+                return true;
+            });
+        }
+
+        // Page 4: Visualizing Charts
+        function initPageFourCharts() {
+            fetch("/history")
+            .then(res => res.json())
+            .then(data => {
+                if (data.length === 0) return;
+                const times = data.map(r => new Date(r.timestamp * 1000).toISOString().split('T')[1].slice(0, 5));
+                const temps = data.map(r => r.temperature);
+                const hums = data.map(r => r.humidity);
+                const press = data.map(r => r.pressure);
+                const aqis = data.map(r => r.aqi);
+
+                // Wave Curve Line Chart (Temp)
+                if (chartTempWave) chartTempWave.destroy();
+                chartTempWave = new Chart(document.getElementById("chart-temp-wave").getContext("2d"), {
+                    type: 'line',
+                    data: {
+                        labels: times,
+                        datasets: [{
+                            label: 'Temp (°C)',
+                            data: temps,
+                            borderColor: '#800020',
+                            backgroundColor: 'rgba(128, 0, 32, 0.05)',
+                            fill: true,
+                            tension: 0.4,
+                            borderWidth: 1.5,
+                            pointRadius: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { color: '#1C1C21' }, ticks: { color: '#8E8E93', font: { size: 9 } } },
+                            y: { grid: { color: '#1C1C21' }, ticks: { color: '#8E8E93', font: { size: 9 } } }
+                        }
+                    }
+                });
+
+                // Bar Chart (Humidity)
+                if (chartHumBar) chartHumBar.destroy();
+                chartHumBar = new Chart(document.getElementById("chart-hum-bar").getContext("2d"), {
+                    type: 'bar',
+                    data: {
+                        labels: times,
+                        datasets: [{
+                            label: 'Humidity (%)',
+                            data: hums,
+                            backgroundColor: '#F5C2C9',
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { color: '#8E8E93', font: { size: 9 } } },
+                            y: { grid: { color: '#1C1C21' }, ticks: { color: '#8E8E93', font: { size: 9 } } }
+                        }
+                    }
+                });
+
+                // Stacked Line Chart (Atmospheric Pressure)
+                if (chartPresStacked) chartPresStacked.destroy();
+                chartPresStacked = new Chart(document.getElementById("chart-pres-stacked").getContext("2d"), {
+                    type: 'line',
+                    data: {
+                        labels: times,
+                        datasets: [{
+                            label: 'Atm Pressure (hPa)',
+                            data: press,
+                            borderColor: '#800020',
+                            backgroundColor: 'transparent',
+                            borderWidth: 1.5,
+                            pointRadius: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { color: '#1C1C21' }, ticks: { color: '#8E8E93', font: { size: 9 } } },
+                            y: { grid: { color: '#1C1C21' }, ticks: { color: '#8E8E93', font: { size: 9 } } }
+                        }
+                    }
+                });
+
+                // Pie Chart (AQI)
+                const goodAqiCount = aqis.filter(v => v <= 50).length;
+                const moderateAqiCount = aqis.filter(v => v > 50 && v <= 100).length;
+                const unhealthyAqiCount = aqis.filter(v => v > 100).length;
+
+                if (chartAqiPie) chartAqiPie.destroy();
+                chartAqiPie = new Chart(document.getElementById("chart-aqi-pie").getContext("2d"), {
+                    type: 'pie',
+                    data: {
+                        labels: ['Good 良好', 'Moderate 普通', 'Unhealthy 悪い'],
+                        datasets: [{
+                            data: [goodAqiCount || 10, moderateAqiCount || 20, unhealthyAqiCount || 5],
+                            backgroundColor: ['#6B1D2F', '#800020', '#F5C2C9'],
+                            borderWidth: 1,
+                            borderColor: '#151518'
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom', labels: { color: '#8E8E93', font: { size: 8 } } } }
+                    }
+                });
+            });
+        }
+
+        // Page 5: AI chat Scenario creator mapping
+        function loadScenarioTemplate() {
+            const type = document.getElementById("sim-scenario-select").value;
+            const tempInput = document.getElementById("sc-temp");
+            const humInput = document.getElementById("sc-hum");
+            const aqiInput = document.getElementById("sc-aqi");
+            const windInput = document.getElementById("sc-wind");
+
+            if (type === "dry_wind") {
+                tempInput.value = "43.5";
+                humInput.value = "11";
+                aqiInput.value = "90";
+                windInput.value = "54.2";
+            } else if (type === "storm") {
+                tempInput.value = "18.2";
+                humInput.value = "96";
+                aqiInput.value = "45";
+                windInput.value = "68.5";
+            } else if (type === "smoke") {
+                tempInput.value = "35.4";
+                humInput.value = "28";
+                aqiInput.value = "192";
+                windInput.value = "15.3";
+            }
+        }
+
+        function runScenarioAnalysis() {
+            const scenarioText = document.getElementById("sim-scenario-select").options[document.getElementById("sim-scenario-select").selectedIndex].text;
+            const temp = parseFloat(document.getElementById("sc-temp").value);
+            const hum = parseFloat(document.getElementById("sc-hum").value);
+            const aqi = parseInt(document.getElementById("sc-aqi").value);
+            const wind = parseFloat(document.getElementById("sc-wind").value);
+
+            const promptText = `Trigger analysis for scenario: "${scenarioText}". Telemetries details: Temp=${temp}°C, Humidity=${hum}%, AQI=${aqi}, Wind=${wind}km/h. Provide crisis evaluation.`;
+            
+            appendAIMessage("USER", promptText);
+
+            // Execute mock request
+            const chatBox = document.getElementById("chat-box");
+            const loadingBubble = document.createElement("div");
+            loadingBubble.className = "border-l border-maroon pl-2.5 bg-raised/20 p-1.5 rounded-[2px] cursor-blink";
+            loadingBubble.innerHTML = `<div class="text-[9px] text-slate mb-1">GUARDIAN AI</div><p class="text-[11px] text-white" id="stream-ai-sc-text"></p>`;
+            chatBox.appendChild(loadingBubble);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            setTimeout(() => {
+                loadingBubble.classList.remove("cursor-blink");
+                const streamText = document.getElementById("stream-ai-sc-text");
+                const simulatedAnalysis = `【インシデント解析レポート】\nシナリオ: ${scenarioText}\n温度: ${temp}°C | 湿度: ${hum}% | 空気質: ${aqi} AQI | 風速: ${wind} km/h\n\n判定: 臨界値警告。熱気乾燥の閾値逸脱を検出。局所的な植生発火または粒子対流の危険性があります。ドローンパトロールを巡回させてください。 / Anomaly alert: high temperature combined with low moisture levels triggers immediate patrol recommendation for Sector 2.`;
+                
+                let idx = 0;
+                const typing = setInterval(() => {
+                    streamText.innerText += simulatedAnalysis.charAt(idx);
+                    idx++;
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                    if (idx >= simulatedAnalysis.length) {
+                        clearInterval(typing);
+                        streamText.id = "";
+                    }
+                }, 15);
+            }, 1000);
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById("chat-input");
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = "";
+
+            appendAIMessage("USER", text);
+
+            const chatBox = document.getElementById("chat-box");
+            const loadingBubble = document.createElement("div");
+            loadingBubble.className = "border-l border-maroon pl-2.5 bg-raised/20 p-1.5 rounded-[2px] cursor-blink";
+            loadingBubble.innerHTML = `<div class="text-[9px] text-slate mb-1">GUARDIAN AI</div><p class="text-[11px] text-white" id="stream-ai-reply-text"></p>`;
+            chatBox.appendChild(loadingBubble);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            if (!systemApiKey) {
+                // Mock response fallback
+                setTimeout(() => {
+                    loadingBubble.classList.remove("cursor-blink");
+                    const streamText = document.getElementById("stream-ai-reply-text");
+                    const reply = `【応答】現在の監視ステーションデータに異常値はありません。シナリオ選択メニューからテストシミュレーションを実行できます。 / Standby. Telemetry ranges are nominal. Choose a mock scenario block to evaluate dynamic responses.`;
+                    let idx = 0;
+                    const typing = setInterval(() => {
+                        streamText.innerText += reply.charAt(idx);
+                        idx++;
+                        chatBox.scrollTop = chatBox.scrollHeight;
+                        if (idx >= reply.length) {
+                            clearInterval(typing);
+                            streamText.id = "";
+                        }
+                    }, 15);
+                }, 1000);
+                return;
+            }
+
+            // Real Anthropic call
+            fetch("https://api.anthropic.com/v1/messages", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-api-key": systemApiKey,
+                    "anthropic-version": "2023-06-01",
+                    "anthropic-dangerously-allow-browser": "true"
+                },
+                body: JSON.stringify({
+                    model: "claude-3-5-sonnet-20241022",
+                    max_tokens: 300,
+                    system: "You are Guardian AI. Answer concisely under 120 words.",
+                    messages: [{ role: "user", content: text }],
+                    stream: true
+                })
+            })
+            .then(res => {
+                loadingBubble.classList.remove("cursor-blink");
+                const streamText = document.getElementById("stream-ai-reply-text");
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let result = "";
+
+                function readChunk() {
+                    reader.read().then(({ done, value }) => {
+                        if (done) {
+                            streamText.id = "";
+                            return;
+                        }
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split("\n");
+                        for (const line of lines) {
+                            if (line.startsWith("data:")) {
+                                const dataStr = line.slice(5).trim();
+                                if (dataStr === "[DONE]") continue;
+                                try {
+                                    const json = JSON.parse(dataStr);
+                                    if (json.type === "content_block_delta" && json.delta.text) {
+                                        result += json.delta.text;
+                                        streamText.innerText = result;
+                                        chatBox.scrollTop = chatBox.scrollHeight;
+                                    }
+                                } catch(e){}
+                            }
+                        }
+                        readChunk();
+                    });
+                }
+                readChunk();
+            })
+            .catch(err => {
+                loadingBubble.classList.remove("cursor-blink");
+                document.getElementById("stream-ai-reply-text").innerText = "AI integration offline.";
+                document.getElementById("stream-ai-reply-text").id = "";
+            });
+        }
+
+        function appendAIMessage(sender, text) {
+            const chatBox = document.getElementById("chat-box");
+            const div = document.createElement("div");
+            const now = new Date().toLocaleTimeString();
+
+            div.className = "bg-raised/40 p-2 border border-border text-right rounded-[2px]";
+            div.innerHTML = `<div class="text-[9px] text-slate mb-1">${now} | USER</div><p class="text-[11px] text-white">${text}</p>`;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function displayScenarioAIReport(data) {
+            // Callback from simulated wildfire endpoints
+            const panel = document.getElementById("ai-report-panel");
+            document.getElementById("ai-report-confidence").innerText = data.confidence || "N/A";
+
+            panel.innerHTML = `
+                <div class="space-y-2 text-xs">
+                    <div class="text-pink font-bold border-b border-border/50 pb-1 uppercase">${data.incident}</div>
+                    <p class="text-[11px] leading-relaxed text-slate">${data.cause}</p>
+                    <div class="bg-void/50 border border-border p-2 rounded-[2px] mt-2">
+                        <span class="text-maroon block font-bold text-[10px]">INSTRUCTION / 対応要請</span>
+                        <p class="text-white">${data.recommendation}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Page 6: Export CSV logs list preview
+        function loadPacketJourney() {
+            fetch("/packets")
+            .then(res => res.json())
+            .then(rows => {
+                const tbody = document.getElementById("packet-journey-rows");
+                if (!tbody) return;
+                tbody.innerHTML = "";
+                if (!rows.length) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="py-3 text-center text-slate">No packets logged yet.</td></tr>`;
+                    return;
+                }
+                rows.slice(0, 8).forEach(pkt => {
+                    if (pkt.relay_path) lastPacketRelayPath = pkt.relay_path;
+                    const tr = document.createElement("tr");
+                    tr.className = "packet-row";
+                    const statusClass = pkt.status === "DELIVERED" ? "text-green" : "text-amber";
+                    const latMs = pkt.transmission_time ? (pkt.transmission_time * 1000).toFixed(0) : "—";
+                    tr.innerHTML = `
+                        <td class="py-1.5 pr-2 text-pink">${(pkt.packet_id || "").slice(0, 14)}</td>
+                        <td class="py-1.5 pr-2 font-bold text-white">${pkt.node_id}</td>
+                        <td class="py-1.5 pr-2">${pkt.hop_count || 1}</td>
+                        <td class="py-1.5 pr-2">${latMs}ms</td>
+                        <td class="py-1.5 ${statusClass} font-bold">${pkt.status}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            })
+            .catch(() => {});
+        }
+
+        function replayLastPacketPath() {
+            switchPage(2);
+            triggerSimulationPulse(lastPacketRelayPath, systemAlertState === "ALERT");
+        }
+
+        function loadExternalIntel() {
+            fetch("https://api.rainviewer.com/public/weather-maps.json")
+            .then(res => res.json())
+            .then(data => {
+                const radarEl = document.getElementById("intel-radar-val");
+                if (radarEl && data.radar && data.radar.past && data.radar.past.length) {
+                    radarEl.innerText = "RainViewer LIVE";
+                    radarEl.className = "text-[11px] font-bold text-green font-mono";
+                }
+            })
+            .catch(() => {
+                const radarEl = document.getElementById("intel-radar-val");
+                if (radarEl) {
+                    radarEl.innerText = "OFFLINE FALLBACK";
+                    radarEl.className = "text-[11px] font-bold text-amber font-mono";
+                }
+            });
+
+            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${DEFAULT_LAT}&longitude=${DEFAULT_LON}&current=precipitation,wind_speed_10m&timezone=auto`)
+            .then(res => res.json())
+            .then(data => {
+                const precip = data.current?.precipitation;
+                const el = document.getElementById("intel-precip-val");
+                if (el && precip !== undefined) el.innerText = `${precip} mm/h`;
+            })
+            .catch(() => {});
+
+            fetch("/config.json")
+            .then(res => res.json())
+            .then(cfg => {
+                if (!cfg.aqicn_api_key) {
+                    const el = document.getElementById("intel-aqi-val");
+                    if (el) el.innerText = "Local sensor";
+                    return;
+                }
+                return fetch(`https://api.waqi.info/feed/geo:${DEFAULT_LAT};${DEFAULT_LON}/?token=${cfg.aqicn_api_key}`)
+                .then(r => r.json())
+                .then(d => {
+                    const el = document.getElementById("intel-aqi-val");
+                    if (el && d.data?.aqi) el.innerText = `${d.data.aqi} AQI`;
+                });
+            })
+            .catch(() => {});
+
+            const firmsEl = document.getElementById("intel-firms-val");
+            if (firmsEl) firmsEl.innerText = "0 detected";
+        }
+
+        function fetchInitialState() {
+            loadPacketJourney();
+            fetch("/alerts")
+            .then(res => res.json())
+            .then(alerts => {
+                const active = alerts.filter(a => a.status === "INCOMING");
+                const container = document.getElementById("active-panic-container");
+                if (!container) return;
+                if (!active.length) {
+                    container.innerHTML = `<div class="text-center text-[10px] text-slate py-4 font-mono">No active emergencies found. Operating state nominal.</div>`;
+                    clearPanicVisualOverrides();
+                    return;
+                }
+                container.innerHTML = "";
+                systemAlertState = "ALERT";
+                document.getElementById("panic-overlay").classList.remove("hidden");
+                document.getElementById("panic-top-line").classList.remove("hidden");
+                active.forEach(data => {
+                    const card = document.createElement("div");
+                    card.id = `panic-card-${data.id}`;
+                    card.className = "panic-card-stunning p-3 border border-maroon/40 rounded-[3px] flex justify-between items-center text-[10px]";
+                    card.innerHTML = buildPanicCardHTML(data);
+                    container.appendChild(card);
+                });
+            })
+            .catch(() => {});
+        }
+
+        function buildPanicCardHTML(data) {
+            const ts = data.timestamp ? new Date(data.timestamp * 1000).toLocaleTimeString() : "—";
+            return `
+                <div class="flex-grow pr-2">
+                    <span class="inline-block px-2 py-0.5 bg-maroon text-pink font-bold rounded-[2px] text-[9px] uppercase mb-1">${data.message_type}</span>
+                    <span class="font-bold text-white block text-[11px]">${data.node_id}</span>
+                    <span class="text-slate text-[9px]">${ts} | ${data.relay_path || "—"}</span>
+                </div>
+                <div class="flex gap-2 shrink-0">
+                    <button onclick="acknowledgePanic(${data.id})" class="px-2.5 py-1 border border-red text-red font-bold rounded-[2px] hover:bg-red hover:text-white text-[9px]">ACK</button>
+                    <button onclick="resolvePanic(${data.id})" class="px-2.5 py-1 bg-green text-void font-bold rounded-[2px] hover:opacity-80 text-[9px]">RESOLVE</button>
+                </div>
+            `;
+        }
+
+        function loadHistoricalLogsPreview() {
+            fetch("/history/json")
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById("csv-preview-rows");
+                const countEl = document.getElementById("export-record-count");
+                if (countEl) countEl.innerText = `${data.length} records`;
+                tbody.innerHTML = "";
+                
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-[10px] text-slate font-mono">No telemetry logged in JSON history yet.</td></tr>`;
+                    return;
+                }
+
+                // Show last 5 entries in preview
+                data.slice(-5).reverse().forEach(row => {
+                    const tr = document.createElement("tr");
+                    tr.className = "hover:bg-raised/35";
+                    
+                    const timeStr = new Date(row.timestamp * 1000).toLocaleString();
+                    
+                    tr.innerHTML = `
+                        <td class="p-2">${timeStr}</td>
+                        <td class="p-2 font-bold">${row.node_id}</td>
+                        <td class="p-2">${row.temperature.toFixed(1)}°C</td>
+                        <td class="p-2">${row.humidity.toFixed(0)}%</td>
+                        <td class="p-2">${row.pressure.toFixed(1)} hPa</td>
+                        <td class="p-2">${row.aqi.toFixed(0)} AQI</td>
+                        <td class="p-2">${row.wind_speed.toFixed(1)} km/h</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            });
+        }
+
+        function exportCSV() {
+            fetch("/history/json")
+            .then(res => res.json())
+            .then(rows => {
+                if (rows.length === 0) {
+                    alert("No telemetry records in JSON logs file to export.");
+                    return;
+                }
+                
+                let csvContent = "data:text/csv;charset=utf-8,";
+                csvContent += "Timestamp,Node_ID,Temperature,Humidity,Pressure,AQI,Rainfall,Wind_Speed,Battery,RSSI,Relay_Path\n";
+                
+                rows.forEach(r => {
+                    const rowStr = [
+                        new Date(r.timestamp * 1000).toLocaleString(),
+                        r.node_id,
+                        r.temperature,
+                        r.humidity,
+                        r.pressure,
+                        r.aqi,
+                        r.rainfall,
+                        r.wind_speed,
+                        r.battery,
+                        r.rssi,
+                        r.relay_path
+                    ].join(",");
+                    csvContent += rowStr + "\n";
+                });
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `guardian_mesh_telemetry_history_${Date.now()}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        }
+
+        function exportJSON() {
+            fetch("/history/json")
+            .then(res => res.json())
+            .then(rows => {
+                if (!rows.length) {
+                    alert("No telemetry records to export.");
+                    return;
+                }
+                const blob = new Blob([JSON.stringify(rows, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `guardian_mesh_telemetry_${Date.now()}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        // Slide Drawer controls and node forms
+        function loadDefaultNodeConfigs() {
+            document.getElementById("config-node-select").addEventListener("change", () => {
+                const nodeId = document.getElementById("config-node-select").value;
+                fetch("/nodes")
+                .then(res => res.json())
+                .then(data => {
+                    const node = data.find(n => n.node_id === nodeId);
+                    if (node && node.config) {
+                        document.getElementById("config-node-name").value = node.config.custom_name;
+                        document.getElementById("config-node-sample").value = node.config.sampling_rate;
+                        document.getElementById("config-node-tx").value = node.config.tx_interval;
+                    }
+                });
+            });
+            
+            // Trigger change on start
+            document.getElementById("config-node-select").dispatchEvent(new Event('change'));
+        }
+
+        function submitNodeConfiguration() {
+            const payload = {
+                node_id: document.getElementById("config-node-select").value,
+                custom_name: document.getElementById("config-node-name").value,
+                sampling_rate: parseInt(document.getElementById("config-node-sample").value),
+                tx_interval: parseInt(document.getElementById("config-node-tx").value)
+            };
+
+            fetch("/config", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(() => {
+                alert("Configuration applied to telemetry node registry.");
+                toggleSlidePanel(false);
+            });
+        }
+
+        function toggleStationConnection() {
+            fetch("/simulation/network-toggle", { method: "POST" })
+            .then(res => res.json())
+            .then(data => {
+                setStationConnectionUI(data.online);
+            });
+        }
+
+        function setStationConnectionUI(online) {
+            groundStationOnline = online;
+            const btn = document.getElementById("btn-toggle-station-link");
+            
+            if (online) {
+                btn.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-green animate-pulse"></span><span>STATION LINK: ONLINE</span>`;
+                btn.className = "w-full bg-raised hover:bg-void border border-border text-green font-semibold py-2 text-xs rounded-[3px] font-mono tracking-wide flex items-center justify-center gap-2";
+            } else {
+                btn.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-red"></span><span>STATION LINK: OFFLINE</span>`;
+                btn.className = "w-full bg-raised hover:bg-void border border-border text-red font-semibold py-2 text-xs rounded-[3px] font-mono tracking-wide flex items-center justify-center gap-2";
+            }
+        }
+
+        function triggerMockFireSimulation() {
+            fetch("/simulation/fire", { method: "POST" })
+            .then(res => res.json())
+            .then(data => {
+                toggleSlidePanel(false);
+                switchPage(3); // Switch to telemetry page to see updates
+            });
+        }
+
+        // Synthesizer Emergency alarm
+        function playSynthesizerBeeps() {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                const audioCtx = new AudioCtx();
+                const now = audioCtx.currentTime;
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.setValueAtTime(880, now + 0.2);
+                
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start(now);
+                osc.stop(now + 0.4);
+            } catch (e){}
+        }
+
+        function triggerPanicEvent(data) {
+            systemAlertState = "ALERT";
+            
+            document.getElementById("panic-overlay").classList.remove("hidden");
+            document.getElementById("panic-top-line").classList.remove("hidden");
+
+            playSynthesizerBeeps();
+            if (alarmBeepInterval) clearInterval(alarmBeepInterval);
+            alarmBeepInterval = setInterval(playSynthesizerBeeps, 3000);
+
+            // Render Alert card
+            const container = document.getElementById("active-panic-container");
+            if (container.innerText.includes("No active emergencies")) {
+                container.innerHTML = "";
+            }
+
+            if (document.getElementById(`panic-card-${data.id}`)) return;
+
+            const card = document.createElement("div");
+            card.id = `panic-card-${data.id}`;
+            card.className = "panic-card-stunning p-3 border border-maroon/40 rounded-[3px] flex justify-between items-center text-[10px]";
+            card.innerHTML = buildPanicCardHTML(data);
+            container.appendChild(card);
+
+            switchPage(3);
+
+            // Trigger alert pulse dot on 3D map
+            triggerSimulationPulse(data.relay_path, true);
+        }
+
+        function acknowledgePanic(alertId) {
+            fetch(`/alerts/${alertId}/ack`, { method: "POST" })
+            .then(res => res.json())
+            .then(() => {
+                clearPanicVisualOverrides();
+                fetchInitialState();
+            });
+        }
+
+        function resolvePanic(alertId) {
+            fetch(`/alerts/${alertId}/resolve`, { method: "POST" })
+            .then(res => res.json())
+            .then(() => {
+                const card = document.getElementById(`panic-card-${alertId}`);
+                if (card) card.remove();
+
+                const container = document.getElementById("active-panic-container");
+                if (container.children.length === 0) {
+                    container.innerHTML = `<div class="text-center text-[10px] text-slate py-4 font-mono">No active emergencies found. Operating state nominal.</div>`;
+                }
+
+                clearPanicVisualOverrides();
+                fetchInitialState();
+            });
+        }
+
+        function clearPanicVisualOverrides() {
+            systemAlertState = "NOMINAL";
+            if (alarmBeepInterval) {
+                clearInterval(alarmBeepInterval);
+                alarmBeepInterval = null;
+            }
+
+            document.getElementById("panic-overlay").classList.add("hidden");
+            document.getElementById("panic-top-line").classList.add("hidden");
+        }
+    </script>
+</body>
+</html>
