@@ -3,743 +3,824 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Guardian Mesh — Autonomous low-cost environmental and disaster monitoring network. Live sensor telemetry, AI incident analysis, mesh topology visualization.">
-<title>Guardian Mesh · Environmental Station OS</title>
+<title>Guardian Mesh OS — Environmental Intelligence Platform</title>
+<meta name="description" content="Guardian Mesh: Field-deployable ESP32 mesh environmental intelligence system with AI-powered incident analysis.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
 
-<!-- ── GLOBAL LAYERS ──────────────────────────────────────────────── -->
-<canvas id="bg-canvas" aria-hidden="true"></canvas>
-<div id="ambient-orbs" aria-hidden="true">
-  <div class="orb orb-1"></div>
-  <div class="orb orb-2"></div>
-  <div class="orb orb-3"></div>
-</div>
-
-<!-- ── ONBOARDING OVERLAY ─────────────────────────────────────────── -->
-<div id="onboarding-overlay" role="dialog" aria-label="Welcome to Guardian Mesh" aria-modal="true">
-  <div class="onb-backdrop"></div>
-  <div class="onb-card" id="onb-card">
-    <div class="onb-step active" data-step="0">
-      <div class="onb-icon">🛰️</div>
-      <h2 class="onb-title">Guardian Mesh</h2>
-      <p class="onb-body">A low-cost, autonomous environmental monitoring network. ESP32 sensor nodes watch over forests, mountains, and disaster corridors — 24/7.</p>
-      <p class="onb-hint">This is a live demo running on real hardware + simulated data.</p>
-    </div>
-    <div class="onb-step" data-step="1">
-      <div class="onb-icon">📡</div>
-      <h2 class="onb-title">Live Mesh Network</h2>
-      <p class="onb-body">Nodes relay data through ESP-NOW multi-hop routing — no WiFi infrastructure needed. The <strong>Monitoring</strong> page shows the live packet flow.</p>
-    </div>
-    <div class="onb-step" data-step="2">
-      <div class="onb-icon">🤖</div>
-      <h2 class="onb-title">AI Incident Analysis</h2>
-      <p class="onb-body">When anomalies are detected, Gemini AI generates a structured incident report. Try the <strong>AI Scenario</strong> page to run your own analysis.</p>
-    </div>
-    <div class="onb-step" data-step="3">
-      <div class="onb-icon">▶️</div>
-      <h2 class="onb-title">Ready to Explore</h2>
-      <p class="onb-body">Click <strong>Run Demo</strong> anytime to watch a wildfire detection sequence unfold live — or explore each section at your own pace.</p>
-    </div>
-    <div class="onb-footer">
-      <div class="onb-dots" id="onb-dots"></div>
-      <div class="onb-actions">
-        <button class="btn btn-ghost btn-sm" id="onb-skip" onclick="closeOnboarding()">Skip</button>
-        <button class="btn btn-primary" id="onb-next" onclick="onboardingNext()">Get Started →</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ── STORY MODE ──────────────────────────────────────────────────── -->
-<div id="story-overlay" role="dialog" aria-label="Guardian Mesh Story Mode" aria-modal="true">
-  <button class="story-exit" onclick="closeStory()" aria-label="Exit Story Mode">✕ EXIT</button>
-  <canvas id="story-canvas" aria-hidden="true"></canvas>
-  <div class="story-content">
-    <div class="story-scene active" data-scene="0">
-      <div class="story-badge">SCENE 01</div>
-      <div class="story-icon">🌿</div>
-      <h2 class="story-title">A Network Watching Over Nature</h2>
-      <p class="story-body">Across remote forests and disaster-prone corridors — tiny ESP32 sensor nodes stand silent watch. Autonomous. Resilient. Always on.</p>
-    </div>
-    <div class="story-scene" data-scene="1">
-      <div class="story-badge">SCENE 02</div>
-      <div class="story-icon">🔥</div>
-      <h2 class="story-title">Anomaly Detected</h2>
-      <p class="story-body">Node Alpha reports: Temperature 54°C · AQI 280 · Humidity 18% · Wind NE at 34 km/h. Guardian Mesh identifies a wildfire signature in Grid 7-North.</p>
-    </div>
-    <div class="story-scene" data-scene="2">
-      <div class="story-badge">SCENE 03</div>
-      <div class="story-icon">📡</div>
-      <h2 class="story-title">Mesh Relay Activates</h2>
-      <p class="story-body">The alert packet hops node-to-node through the mesh. Even without WiFi coverage, data reaches the ground station in under 800ms via ESP-NOW routing.</p>
-    </div>
-    <div class="story-scene" data-scene="3">
-      <div class="story-badge">SCENE 04</div>
-      <div class="story-icon">🛰️</div>
-      <h2 class="story-title">Ground Station Receives</h2>
-      <p class="story-body">The gateway logs the packet into SQLite and broadcasts live via WebSocket to every connected dashboard. Zero latency. Zero data loss.</p>
-    </div>
-    <div class="story-scene" data-scene="4">
-      <div class="story-badge">SCENE 05</div>
-      <div class="story-icon">🤖</div>
-      <h2 class="story-title">AI Generates Incident Report</h2>
-      <p class="story-body">Gemini AI analyzes the full telemetry context and produces a structured report: <em>Severity: Critical · Confidence: 94% · Dispatch recommended immediately.</em></p>
-    </div>
-    <div class="story-scene" data-scene="5">
-      <div class="story-badge">SCENE 06</div>
-      <div class="story-icon">📊</div>
-      <h2 class="story-title">Historical Record Updated</h2>
-      <p class="story-body">Every reading is stored. Every event is logged. The analytics engine updates trend lines and generates a downloadable PDF incident summary.</p>
-    </div>
-    <div class="story-scene" data-scene="6">
-      <div class="story-badge">SCENE 07</div>
-      <div class="story-icon">🌐</div>
-      <h2 class="story-title">Built for the Real World</h2>
-      <p class="story-body">Low cost. Offline-resilient. AI-powered. Scalable from 3 nodes to 300. Guardian Mesh — environmental monitoring without compromise.</p>
-    </div>
-  </div>
-  <div class="story-nav">
-    <div class="story-progress" id="story-progress"></div>
-    <div class="story-btns">
-      <button class="btn btn-ghost btn-sm" id="story-prev-btn" onclick="storyPrev()">← Prev</button>
-      <button class="btn btn-primary btn-sm" id="story-next-btn" onclick="storyNext()">Next →</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── TOOLTIP ─────────────────────────────────────────────────────── -->
-<div id="tooltip" role="tooltip" aria-hidden="true"></div>
-
-<!-- ── TOP NAV ────────────────────────────────────────────────────── -->
-<nav id="top-nav">
-  <div class="nav-brand">
-    <div class="nav-logo-mark" aria-hidden="true">
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-        <circle cx="9" cy="9" r="8" stroke="#C8728A" stroke-width="1.5"/>
-        <circle cx="9" cy="9" r="3" fill="#8B1A2E"/>
-        <line x1="9" y1="1" x2="9" y2="5" stroke="#C8728A" stroke-width="1.5"/>
-        <line x1="9" y1="13" x2="9" y2="17" stroke="#C8728A" stroke-width="1.5"/>
-        <line x1="1" y1="9" x2="5" y2="9" stroke="#C8728A" stroke-width="1.5"/>
-        <line x1="13" y1="9" x2="17" y2="9" stroke="#C8728A" stroke-width="1.5"/>
-      </svg>
-    </div>
+<!-- BOOT OVERLAY -->
+<div id="boot-overlay">
+  <div class="boot-logo">
+    <div class="boot-hexmark"></div>
     <div>
-      <div class="nav-title">GUARDIAN MESH</div>
-      <div class="nav-subtitle">Environmental Station OS</div>
+      <div class="boot-brand">GUARDIAN <span>MESH</span></div>
+      <div class="boot-ver">ENVIRONMENTAL OS · v3.0 · FIELD STATION</div>
     </div>
   </div>
-
-  <div class="nav-links" role="tablist">
-    <button class="nav-link active" data-page="1" onclick="switchPage(1)" role="tab" aria-selected="true" data-tooltip="Project introduction and hero overview">Introduction</button>
-    <button class="nav-link" data-page="2" onclick="switchPage(2)" role="tab" data-tooltip="How the system works step by step">Roadmap</button>
-    <button class="nav-link" data-page="3" onclick="switchPage(3)" role="tab" data-tooltip="Live environmental sensor readings and charts">Sensor Data</button>
-    <button class="nav-link" data-page="4" onclick="switchPage(4)" role="tab" data-tooltip="3D live mesh network topology">Monitoring</button>
-    <button class="nav-link" data-page="5" onclick="switchPage(5)" role="tab" data-tooltip="AI-powered incident scenario analysis">AI Scenario</button>
-    <button class="nav-link" data-page="6" onclick="switchPage(6)" role="tab" data-tooltip="Historical logs, trends, and data export">History</button>
-    <button class="nav-link" data-page="7" onclick="switchPage(7)" role="tab" data-tooltip="Project conclusion and impact">Finale</button>
+  <div class="boot-subtitle" id="boot-title">INITIALIZING SYSTEMS…</div>
+  <div class="boot-list" id="boot-list">
+    <div class="boot-item" id="bi-nodes">  <div class="bi-dot"></div> Node Registry…</div>
+    <div class="boot-item" id="bi-sensors"><div class="bi-dot"></div> Sensor Calibration…</div>
+    <div class="boot-item" id="bi-net">    <div class="bi-dot"></div> Mesh Network…</div>
+    <div class="boot-item" id="bi-ai">     <div class="bi-dot"></div> AI Engine…</div>
+    <div class="boot-item" id="bi-db">     <div class="bi-dot"></div> Database…</div>
+    <div class="boot-item" id="bi-sat">    <div class="bi-dot"></div> Satellite Feed…</div>
   </div>
+  <div class="boot-bar-wrap"><div class="boot-bar" id="boot-bar"></div></div>
+</div>
 
-  <div class="nav-actions">
-    <button class="btn-demo" onclick="runDemo()" id="btn-demo" data-tooltip="Trigger a live wildfire detection demo sequence">
-      <span class="btn-demo-dot"></span> Run Demo
-    </button>
-    <button class="btn-story" onclick="startStory()" data-tooltip="Watch the Guardian Mesh story presentation">▶ Story</button>
-    <div class="nav-live">
-      <div class="live-dot"></div>
-      <span id="ws-label">LIVE</span>
-    </div>
-    <div id="nav-clock" aria-live="polite"></div>
-  </div>
-</nav>
+<!-- MISSION BRIEF -->
+<div id="brief-overlay">
+  <div class="brief-eyebrow">MISSION BRIEF · FIELD DEPLOYMENT ALPHA</div>
+  <div class="brief-body" id="brief-text"></div>
+  <button class="brief-btn" onclick="enterDashboard()">ENTER MISSION CONTROL →</button>
+</div>
 
-<!-- ── QUICK TOUR ──────────────────────────────────────────────────── -->
-<button id="tour-btn" onclick="startTour()" data-tooltip="Start guided tour" aria-label="Quick tour">?</button>
+<!-- AMBIENT -->
+<canvas id="ambient-canvas"></canvas>
 
-<!-- ═════════════════════════════════════════════════════════════════
-     MAIN CONTENT
-═════════════════════════════════════════════════════════════════ -->
-<main id="main-content">
-
-<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     PAGE 1 · INTRODUCTION
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-<section class="page active" id="page-1">
-  <!-- Parallax hero -->
-  <div class="hero-wrap" id="hero-parallax">
-    <div class="hero-glow"></div>
-
-    <!-- Left: copy -->
-    <div class="hero-copy" data-depth="0.1">
-      <div class="eyebrow">Autonomous Sentinel Grid · Est. 2025</div>
-      <h1 class="hero-h1">
-        Environmental<br>
-        <span class="grad-text">Intelligence</span><br>
-        at the Edge.
-      </h1>
-      <p class="hero-sub">
-        Guardian Mesh deploys a network of low-cost ESP32 sensor nodes across disaster-prone terrain. Each node collects environmental telemetry, relays it through a self-healing mesh, and feeds this command station — where AI, analytics, and live visualization converge.
-      </p>
-      <div class="hero-ctas">
-        <button class="btn btn-primary btn-lg" onclick="switchPage(2)" data-tooltip="See how the system works">Explore the System →</button>
-        <button class="btn btn-ghost btn-lg" onclick="startStory()" data-tooltip="Watch the cinematic guided demo">▶ Story Mode</button>
-        <button class="btn-demo btn-lg" onclick="runDemo()" data-tooltip="Trigger live wildfire demo">
-          <span class="btn-demo-dot"></span> Run Live Demo
-        </button>
-      </div>
-
-      <!-- Live stats strip -->
-      <div class="hero-stats">
-        <div class="stat-item" data-tooltip="Total active sensor nodes in network">
-          <div class="stat-val">6</div>
-          <div class="stat-label">Active Nodes</div>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item" data-tooltip="Total sensor readings in database">
-          <div class="stat-val" id="intro-records">—</div>
-          <div class="stat-label">Records Logged</div>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item" data-tooltip="Average alert relay latency">
-          <div class="stat-val">&lt;1s</div>
-          <div class="stat-label">Alert Latency</div>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item" data-tooltip="AI analysis capability">
-          <div class="stat-val" id="intro-ai-badge">AI</div>
-          <div class="stat-label">Powered Reports</div>
+<!-- ALERTS -->
+<div id="alert-overlay"></div>
+<div id="panic-banner">
+  <div class="panel glow-crimson p-4" style="border-color:rgba(239,68,68,.4)">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div style="font-size:20px">🔥</div>
+        <div>
+          <div style="font-family:var(--f-mono);font-size:10px;color:var(--crimson);letter-spacing:.1em">CRITICAL ALERT</div>
+          <div id="panic-msg" style="font-size:13px;font-weight:600;color:var(--ivory);margin-top:2px"></div>
         </div>
       </div>
-    </div>
-
-    <!-- Right: 3D network illustration -->
-    <div class="hero-visual" data-depth="0.25">
-      <canvas id="hero-canvas" width="520" height="420" aria-label="Live mesh network visualization"></canvas>
-      <div class="hero-canvas-label">Live Mesh Topology</div>
+      <div class="flex gap-2">
+        <button class="btn btn-xs btn-outline" onclick="ackPanic()">ACK</button>
+        <button class="btn btn-xs btn-primary" onclick="switchPage(6)">VIEW AI →</button>
+      </div>
     </div>
   </div>
+</div>
 
-  <!-- Feature cards -->
-  <div class="intro-cards">
-    <div class="intro-card card-tilt" data-tooltip="8 sensor types: temperature, humidity, AQI, pressure, rainfall, wind, vibration, UV">
-      <div class="ic-icon">🌡️</div>
-      <div class="ic-title">Hazard Detection</div>
-      <div class="ic-body">8 sensor types detect fire, flood, gas, and storm signatures before they escalate.</div>
-      <div class="ic-badge badge badge-maroon">8 Sensor Types</div>
-    </div>
-    <div class="intro-card card-tilt" data-tooltip="ESP-NOW multi-hop routing — no WiFi infrastructure required">
-      <div class="ic-icon">📡</div>
-      <div class="ic-title">Mesh Relay</div>
-      <div class="ic-body">ESP-NOW multi-hop routing ensures data reaches the ground station even without WiFi.</div>
-      <div class="ic-badge badge badge-green">Offline Resilient</div>
-    </div>
-    <div class="intro-card card-tilt" data-tooltip="OpenWeatherMap + AQICN + NASA FIRMS integration">
-      <div class="ic-icon">⛈️</div>
-      <div class="ic-title">Weather Intelligence</div>
-      <div class="ic-body">Integrates OpenWeatherMap, AQICN, and NASA FIRMS for live environmental overlays.</div>
-      <div class="ic-badge badge badge-muted">Multi-API</div>
-    </div>
-    <div class="intro-card card-tilt" data-tooltip="Gemini AI primary, Claude secondary, mock fallback">
-      <div class="ic-icon">🤖</div>
-      <div class="ic-title">AI Analysis</div>
-      <div class="ic-body">Gemini AI generates structured incident reports with severity, confidence, and dispatch recommendations.</div>
-      <div class="ic-badge badge badge-maroon">Gemini · Claude</div>
-    </div>
-  </div>
+<!-- ══ APP ════════════════════════════════════════════════════════ -->
+<div id="app">
 
-  <!-- Weather strip (live) -->
-  <div class="weather-strip" id="weather-strip">
-    <div class="ws-item" data-tooltip="Current outdoor temperature">
-      <span class="ws-icon">🌡️</span>
-      <span class="ws-val" id="ws-temp">—</span>
-      <span class="ws-unit">°C</span>
+  <!-- NAV -->
+  <nav id="top-nav">
+    <div class="nav-brand">
+      <div class="nav-hexmark"></div>
+      <div>
+        <div class="nav-title">GUARDIAN MESH</div>
+        <div class="nav-sub">ENV OS v3</div>
+      </div>
     </div>
-    <div class="ws-item" data-tooltip="Relative humidity">
-      <span class="ws-icon">💧</span>
-      <span class="ws-val" id="ws-hum">—</span>
-      <span class="ws-unit">%</span>
+    <div class="nav-sep"></div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" id="ntab-1" onclick="switchPage(1)">Home</button>
+      <button class="nav-tab" id="ntab-2" onclick="switchPage(2)">Web Data</button>
+      <button class="nav-tab" id="ntab-3" onclick="switchPage(3)">Sensor Data</button>
+      <button class="nav-tab" id="ntab-4" onclick="switchPage(4)">Twin Sense</button>
+      <button class="nav-tab" id="ntab-5" onclick="switchPage(5)">History</button>
+      <button class="nav-tab" id="ntab-6" onclick="switchPage(6)">AI Command</button>
+      <button class="nav-tab" id="ntab-7" onclick="switchPage(7)">Roadmap</button>
     </div>
-    <div class="ws-item" data-tooltip="Air quality index">
-      <span class="ws-icon">🍃</span>
-      <span class="ws-val" id="ws-aqi">—</span>
-      <span class="ws-unit">AQI</span>
+    <div class="nav-right">
+      <div class="ws-pill">
+        <div class="ws-dot" id="ws-dot"></div>
+        <span id="ws-label" style="font-size:10px">CONNECTING</span>
+      </div>
+      <button class="btn-demo" onclick="runJudgeDemo()" id="btn-judge-demo">
+        <span class="demo-icon">⚡</span> RUN FULL DEMO
+      </button>
     </div>
-    <div class="ws-item" data-tooltip="Wind speed">
-      <span class="ws-icon">🌬️</span>
-      <span class="ws-val" id="ws-wind">—</span>
-      <span class="ws-unit">km/h</span>
-    </div>
-    <div class="ws-item ws-source" id="ws-source-badge" data-tooltip="Data source indicator">
-      <span class="ws-val" style="font-size:10px;color:#555;">Loading…</span>
-    </div>
-  </div>
-</section>
+  </nav>
 
-<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     PAGE 2 · ROADMAP
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-<section class="page" id="page-2">
-  <div class="page-inner">
-    <div class="eyebrow">System Architecture</div>
-    <h2 class="page-h2">How Guardian Mesh Works</h2>
-    <p class="page-sub">From a sensor node in a remote forest to an AI-generated incident report in under 5 seconds.</p>
+  <main>
 
-    <div class="roadmap">
-      <div class="rm-step card-tilt" data-tooltip="ESP32 nodes sample temperature, humidity, AQI, pressure, rain, wind">
-        <div class="rm-num">01</div>
-        <div class="rm-content">
-          <div class="rm-icon">🌡️</div>
-          <div>
-            <div class="rm-tag">Sensor Layer</div>
-            <div class="rm-title">ESP32 Sensor Nodes</div>
-            <div class="rm-body">Low-power ESP32 microcontrollers with DHT22, BMP280, MQ-135, rain and wind sensors. Each node samples every 5–30 seconds and transmits via ESP-NOW.</div>
-            <div class="rm-chips">
-              <span class="badge badge-green">Temperature</span>
-              <span class="badge badge-muted">Humidity</span>
-              <span class="badge badge-muted">Pressure</span>
-              <span class="badge badge-muted">AQI</span>
-              <span class="badge badge-muted">Rainfall</span>
-              <span class="badge badge-muted">Wind</span>
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE 1: HOME — LONG SCROLL
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="page active home-page" id="page-1">
+
+    <!-- HERO -->
+    <div class="home-hero">
+      <div class="home-hero-left">
+        <div class="sys-strip">
+          <div class="ss-item"><div class="ss-dot" style="background:var(--emerald);box-shadow:0 0 6px var(--emerald)"></div>Mesh Online</div>
+          <div class="ss-item"><div class="ss-dot" style="background:var(--emerald);box-shadow:0 0 6px var(--emerald)"></div>AI Active</div>
+          <div class="ss-item"><div class="ss-dot" style="background:var(--amber);box-shadow:0 0 6px var(--amber)"></div>API: Mock</div>
+          <div class="ss-item"><div class="ss-dot" style="background:var(--fog)"></div>Sat: Pending</div>
+        </div>
+        <div class="eyebrow accent" style="margin-bottom:14px">BENGALURU FIELD STATION · 12.97°N 77.59°E · ACTIVE</div>
+        <h1 class="d-xl" style="margin-bottom:18px">
+          Environmental<br><span class="text-grad">Intelligence.</span><br>
+          <span style="color:var(--fog);font-weight:300">Engineered for</span><br>
+          <span style="color:var(--ivory-2);font-weight:300">the Edge.</span>
+        </h1>
+        <p style="color:var(--fog);font-size:15px;line-height:1.8;max-width:460px;margin-bottom:24px">
+          Autonomous ESP32 nodes form a self-healing mesh across disaster-prone terrain. Sensor telemetry is relayed, stored, enriched with web context, and analyzed by AI in real time — even when all infrastructure fails.
+        </p>
+        <div class="live-grid">
+          <div class="lg-cell"><div class="lg-key">Temperature</div><div class="lg-val"><span id="h-temp">--</span><span style="font-size:10px;color:var(--fog)">°C</span></div><div class="lg-sub" id="h-temp-src">LOCAL · NODE_A</div></div>
+          <div class="lg-cell"><div class="lg-key">Air Quality</div><div class="lg-val"><span id="h-aqi">--</span><span style="font-size:10px;color:var(--fog)"> AQI</span></div><div class="lg-sub">LOCAL · NODE_A</div></div>
+          <div class="lg-cell"><div class="lg-key">Humidity</div><div class="lg-val"><span id="h-hum">--</span><span style="font-size:10px;color:var(--fog)">%</span></div><div class="lg-sub">LOCAL · NODE_A</div></div>
+          <div class="lg-cell"><div class="lg-key">Nodes Active</div><div class="lg-val" style="color:var(--emerald)"><span id="h-nodes">0</span><span style="font-size:10px;color:var(--fog)">/6</span></div><div class="lg-sub">MESH NETWORK</div></div>
+          <div class="lg-cell"><div class="lg-key">DB Records</div><div class="lg-val"><span id="h-records">--</span></div><div class="lg-sub">SQLITE LOCAL</div></div>
+          <div class="lg-cell"><div class="lg-key">AI Reports</div><div class="lg-val"><span id="h-reports">0</span></div><div class="lg-sub">THIS SESSION</div></div>
+        </div>
+        <div class="hero-actions">
+          <button class="btn btn-primary" onclick="switchPage(4)">→ Open Twin Sense</button>
+          <button class="btn btn-outline" onclick="switchPage(3)">Sensor Data</button>
+          <button class="btn btn-ghost" onclick="runJudgeDemo()">⚡ Full Demo</button>
+        </div>
+      </div>
+      <div class="home-hero-right">
+        <canvas id="hero-canvas"></canvas>
+        <div class="hero-canvas-overlay">
+          <div><div class="eyebrow" style="margin-bottom:4px">Live Mesh Topology</div><div class="badge badge-live">STREAMING</div></div>
+          <div style="text-align:right;font-family:var(--f-mono);font-size:9px;color:var(--smoke)"><div>ESP-NOW Protocol</div><div>Multi-hop Routing</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WHAT IS GUARDIAN MESH -->
+    <div class="home-section">
+      <div class="hs-label">MISSION</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center">
+        <div>
+          <h2 class="d-lg" style="margin-bottom:20px">What is<br><span class="text-grad">Guardian Mesh?</span></h2>
+          <p style="color:var(--fog);font-size:15px;line-height:1.9;margin-bottom:18px">
+            Guardian Mesh is a low-cost, open-source environmental intelligence system built on ESP32 microcontrollers. It creates a self-organizing, multi-hop wireless sensor network that collects real-time environmental data from remote or disaster-prone areas — without requiring any internet connectivity or centralized infrastructure.
+          </p>
+          <p style="color:var(--fog);font-size:15px;line-height:1.9;margin-bottom:18px">
+            Each node in the mesh is an autonomous sensor station. When one node fails or loses power, surrounding nodes reroute data automatically. The system is designed to remain operational in the conditions where traditional communication fails: wildfires, floods, earthquakes, and remote terrain.
+          </p>
+          <p style="color:var(--fog);font-size:15px;line-height:1.9">
+            This dashboard is the ground-station control center: a real-time view into the mesh, enriched with external API context and powered by Gemini AI for automated incident analysis.
+          </p>
+        </div>
+        <div>
+          <div class="feature-grid">
+            <div class="feature-card panel">
+              <div class="fc-icon">🕸️</div>
+              <div class="fc-title">Self-Healing Mesh</div>
+              <div class="fc-body">Nodes relay data via ESP-NOW. When a path fails, the mesh reroutes automatically with under 800ms failover latency.</div>
             </div>
-          </div>
-        </div>
-        <div class="rm-arrow">↓</div>
-      </div>
-
-      <div class="rm-step card-tilt" data-tooltip="Packets hop node-to-node via ESP-NOW — no WiFi required">
-        <div class="rm-num">02</div>
-        <div class="rm-content">
-          <div class="rm-icon">📡</div>
-          <div>
-            <div class="rm-tag">Relay Layer</div>
-            <div class="rm-title">ESP-NOW Multi-Hop Mesh</div>
-            <div class="rm-body">Relay nodes forward packets hop-by-hop. If Node A cannot reach the gateway, it routes through Node B → C. The mesh self-heals when nodes go offline.</div>
-            <div class="rm-code">NODE_A → NODE_B → GATEWAY (3 hops · ~680ms)</div>
-          </div>
-        </div>
-        <div class="rm-arrow">↓</div>
-      </div>
-
-      <div class="rm-step card-tilt" data-tooltip="Gateway connects to WiFi and POSTs telemetry to FastAPI backend">
-        <div class="rm-num">03</div>
-        <div class="rm-content">
-          <div class="rm-icon">🛰️</div>
-          <div>
-            <div class="rm-tag">Gateway Layer</div>
-            <div class="rm-title">WiFi Gateway & FastAPI Server</div>
-            <div class="rm-body">The gateway ESP32 bridges the mesh to WiFi, POSTing telemetry to the FastAPI backend. The server writes to SQLite and broadcasts live via WebSocket.</div>
-          </div>
-        </div>
-        <div class="rm-arrow">↓</div>
-      </div>
-
-      <div class="rm-step card-tilt" data-tooltip="This dashboard — live charts, 3D topology, AI reports">
-        <div class="rm-num">04</div>
-        <div class="rm-content">
-          <div class="rm-icon">📊</div>
-          <div>
-            <div class="rm-tag">Dashboard Layer</div>
-            <div class="rm-title">This Control Station</div>
-            <div class="rm-body">The web dashboard renders live sensor charts, shows mesh topology, detects anomalies, and surfaces AI-generated incident intelligence in real time.</div>
-          </div>
-        </div>
-        <div class="rm-arrow">↓</div>
-      </div>
-
-      <div class="rm-step rm-step-accent card-tilt" data-tooltip="Gemini AI + Claude AI generate structured incident reports">
-        <div class="rm-num">05</div>
-        <div class="rm-content">
-          <div class="rm-icon">🤖</div>
-          <div>
-            <div class="rm-tag">Intelligence Layer</div>
-            <div class="rm-title">AI Incident Analysis</div>
-            <div class="rm-body">When anomalies are detected, Gemini AI (primary) or Claude (secondary) generates a structured incident report — severity, cause, recommended action, and confidence score.</div>
-            <div class="rm-chips">
-              <span class="badge badge-maroon" id="rm-gemini-badge">Gemini</span>
-              <span class="badge badge-muted" id="rm-claude-badge">Claude</span>
-              <span class="badge badge-muted">Mock Fallback</span>
+            <div class="feature-card panel">
+              <div class="fc-icon">🔬</div>
+              <div class="fc-title">Multi-Sensor Nodes</div>
+              <div class="fc-body">Temperature, humidity, pressure, AQI, rainfall, wind, light, battery — 8+ parameters per node, sampled every 5–30 seconds.</div>
+            </div>
+            <div class="feature-card panel">
+              <div class="fc-icon">🌐</div>
+              <div class="fc-title">Web Context Fusion</div>
+              <div class="fc-body">Local readings are cross-referenced with Open-Meteo, AQICN, and NASA FIRMS satellite data for richer situational awareness.</div>
+            </div>
+            <div class="feature-card panel">
+              <div class="fc-icon">🧠</div>
+              <div class="fc-title">AI Incident Analysis</div>
+              <div class="fc-body">Gemini AI synthesizes multi-node sensor anomalies into structured incident reports with severity, cause, and recommended actions.</div>
+            </div>
+            <div class="feature-card panel">
+              <div class="fc-icon">📡</div>
+              <div class="fc-title">Zero Infrastructure</div>
+              <div class="fc-body">The network operates with no WiFi, no cellular, no satellite. It requires only ESP32 hardware and a solar-charged battery per node.</div>
+            </div>
+            <div class="feature-card panel">
+              <div class="fc-icon">⚡</div>
+              <div class="fc-title">Edge Computing</div>
+              <div class="fc-body">Data processing happens at the gateway node. No cloud dependency required for local alerting and relay decision-making.</div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <div style="margin-top:40px;">
-      <button class="btn btn-primary" onclick="switchPage(3)">View Live Sensor Data →</button>
-    </div>
-  </div>
-</section>
-
-<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     PAGE 3 · SENSOR DATA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-<section class="page" id="page-3">
-  <div class="page-inner p3-inner">
-    <div class="p3-header">
-      <div>
-        <div class="eyebrow">Live Telemetry</div>
-        <h2 class="page-h2 sm">Sensor Data</h2>
-      </div>
-      <div class="p3-header-right">
-        <div class="live-badge"><div class="live-dot"></div>LIVE</div>
-        <span id="p3-update" class="mono-label">—</span>
-      </div>
-    </div>
-
-    <!-- Primary sensor row -->
-    <div class="sensor-grid-4">
-      <div class="sensor-card card-tilt" data-tooltip="Air temperature from DHT22 sensor. Alert threshold: 40°C" id="sc-temp">
-        <div class="sc-bg-icon">🌡️</div>
-        <div class="sc-label">Temperature</div>
-        <div class="sc-value-row">
-          <span class="sc-value" id="sv-temp">--</span>
-          <span class="sc-unit">°C</span>
-        </div>
-        <div class="sc-bar-wrap"><div class="sc-bar" id="sb-temp" style="--pct:60%;--color:#C8728A;"></div></div>
-        <div class="sc-trend" id="st-temp">—</div>
-        <div class="sc-threshold">Threshold: 40°C</div>
-      </div>
-
-      <div class="sensor-card card-tilt" data-tooltip="Relative humidity from DHT22. Normal range: 20–90%" id="sc-hum">
-        <div class="sc-bg-icon">💧</div>
-        <div class="sc-label">Humidity</div>
-        <div class="sc-value-row">
-          <span class="sc-value" id="sv-hum">--</span>
-          <span class="sc-unit">%</span>
-        </div>
-        <div class="sc-bar-wrap"><div class="sc-bar" id="sb-hum" style="--pct:65%;--color:#4888C8;"></div></div>
-        <div class="sc-trend" id="st-hum">—</div>
-        <div class="sc-threshold">Normal: 20–90%</div>
-      </div>
-
-      <div class="sensor-card card-tilt" data-tooltip="Atmospheric pressure from BMP280. Alert on drops &gt;5 hPa" id="sc-pres">
-        <div class="sc-bg-icon">🎈</div>
-        <div class="sc-label">Pressure</div>
-        <div class="sc-value-row">
-          <span class="sc-value" id="sv-pres">--</span>
-          <span class="sc-unit" style="font-size:11px;">hPa</span>
-        </div>
-        <div class="sc-bar-wrap"><div class="sc-bar" id="sb-pres" style="--pct:80%;--color:#8A72C8;"></div></div>
-        <div class="sc-trend" id="st-pres">—</div>
-        <div class="sc-threshold">Alert: Δ5 hPa</div>
-      </div>
-
-      <div class="sensor-card card-tilt" data-tooltip="Air quality index from MQ-135. Hazardous above 200 AQI" id="sc-aqi">
-        <div class="sc-bg-icon">🍃</div>
-        <div class="sc-label">Air Quality</div>
-        <div class="sc-value-row">
-          <span class="sc-value" id="sv-aqi">--</span>
-          <span class="sc-unit">AQI</span>
-        </div>
-        <div class="sc-bar-wrap"><div class="sc-bar" id="sb-aqi" style="--pct:30%;--color:#2E8B1A;"></div></div>
-        <div class="sc-trend" id="st-aqi">—</div>
-        <div class="sc-threshold">Hazardous: 200+</div>
-      </div>
-    </div>
-
-    <!-- Secondary sensors + mini cards -->
-    <div class="sensor-grid-4" style="margin-top:12px;">
-      <div class="sensor-card-sm card-tilt" data-tooltip="Rain gauge — alert at 50mm/h">
-        <div class="scs-icon">🌧️</div>
-        <div class="scs-label">Rainfall</div>
-        <div class="scs-val"><span id="sv-rain">--</span><span class="scs-unit">mm/h</span></div>
-      </div>
-      <div class="sensor-card-sm card-tilt" data-tooltip="Anemometer wind speed — alert at 60 km/h">
-        <div class="scs-icon">🌀</div>
-        <div class="scs-label">Wind Speed</div>
-        <div class="scs-val"><span id="sv-wind">--</span><span class="scs-unit">km/h</span></div>
-      </div>
-      <div class="sensor-card-sm card-tilt" data-tooltip="Average node battery level — warning below 20%">
-        <div class="scs-icon">🔋</div>
-        <div class="scs-label">Battery Avg</div>
-        <div class="scs-val"><span id="sv-bat">--</span><span class="scs-unit">%</span></div>
-      </div>
-      <div class="sensor-card-sm card-tilt" data-tooltip="Radio signal strength — fair signal at -70 dBm">
-        <div class="scs-icon">📶</div>
-        <div class="scs-label">Signal (RSSI)</div>
-        <div class="scs-val"><span id="sv-rssi">--</span><span class="scs-unit">dBm</span></div>
-      </div>
-    </div>
-
-    <!-- Charts grid -->
-    <div class="charts-grid">
-      <div class="chart-card" data-tooltip="Temperature trend over last 24 hours">
-        <div class="chart-label">Temperature — 24h Curve</div>
-        <div class="chart-wrap"><canvas id="chart-temp"></canvas></div>
-      </div>
-      <div class="chart-card" data-tooltip="Humidity readings as bar chart">
-        <div class="chart-label">Humidity — Bar</div>
-        <div class="chart-wrap"><canvas id="chart-hum"></canvas></div>
-      </div>
-      <div class="chart-card span2" data-tooltip="Rainfall as filled area wave">
-        <div class="chart-label">Rainfall — Area Wave</div>
-        <div class="chart-wrap"><canvas id="chart-rain"></canvas></div>
-      </div>
-      <div class="chart-card" data-tooltip="Sensor reading distribution by type">
-        <div class="chart-label">Sensor Mix</div>
-        <div class="chart-wrap chart-center"><canvas id="chart-donut"></canvas></div>
-      </div>
-      <div class="chart-card" data-tooltip="Atmospheric pressure trend">
-        <div class="chart-label">Pressure — Trend</div>
-        <div class="chart-wrap"><canvas id="chart-pres"></canvas></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     PAGE 4 · MONITORING / DIGITAL TWIN
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-<section class="page" id="page-4">
-  <div class="monitoring-layout">
-
-    <!-- Mesh canvas -->
-    <div class="mesh-area" id="mesh-area">
-      <canvas id="mesh-canvas" aria-label="Live mesh network topology"></canvas>
-      <div class="mesh-overlay-tl">
-        <div class="eyebrow">Digital Twin</div>
-        <div class="mesh-title">Live Topology</div>
-      </div>
-      <div class="mesh-legend">
-        <div class="legend-item"><div class="legend-dot green"></div>Online</div>
-        <div class="legend-item"><div class="legend-dot amber"></div>Warning</div>
-        <div class="legend-item"><div class="legend-dot gray"></div>Offline</div>
-        <div class="legend-item"><div class="legend-line"></div>Packet</div>
-      </div>
-      <!-- Node tooltip floating label -->
-      <div id="node-tooltip" class="node-float-tip" style="display:none;"></div>
-    </div>
-
-    <!-- Right panel -->
-    <aside class="mesh-panel">
-      <div class="mp-section" data-tooltip="All registered nodes and their current health status">
-        <div class="mp-label">Node Registry</div>
-        <div id="node-registry"></div>
-      </div>
-
-      <div class="mp-section" data-tooltip="Recent packets relayed through the mesh">
-        <div class="mp-label">Packet Journal</div>
-        <div id="packet-log" class="packet-log-list"></div>
-      </div>
-
-      <div class="mp-section">
-        <div class="mp-label">Quick Actions</div>
-        <div class="mp-actions">
-          <button class="mp-btn" onclick="triggerFireSim()" data-tooltip="Inject a wildfire sensor reading into the network">🔥 Simulate Fire</button>
-          <button class="mp-btn" onclick="toggleNetworkLink()" id="btn-net-toggle" data-tooltip="Toggle ground station connection on/off">⚡ Toggle Station</button>
-          <button class="mp-btn" onclick="runDemo()" data-tooltip="Run the complete 5-step demo sequence">▶ Run Demo</button>
-          <button class="mp-btn" onclick="switchPage(5)" data-tooltip="Open AI incident analysis panel">🤖 AI Analysis</button>
-        </div>
-      </div>
-
-      <div class="mp-section">
-        <div class="mp-label">Active Alerts</div>
-        <div id="alert-list">
-          <div class="mp-empty">No active alerts</div>
-        </div>
-      </div>
-    </aside>
-  </div>
-</section>
-
-<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     PAGE 5 · AI SCENARIO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-<section class="page" id="page-5">
-  <div class="page-inner">
-    <div class="eyebrow">Incident Intelligence</div>
-    <h2 class="page-h2 sm">AI Scenario Analysis</h2>
-    <p class="page-sub" style="max-width:520px;">Describe any environmental or network scenario. Guardian AI generates a full incident assessment using Gemini — or Claude if available — with instant mock fallback.</p>
-
-    <!-- AI provider badge -->
-    <div id="ai-provider-row" style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;align-items:center;">
-      <span style="font-size:11px;color:#555;">Active AI:</span>
-      <span class="badge badge-muted" id="ai-provider-badge">Detecting…</span>
-    </div>
-
-    <!-- Quick scenario chips -->
-    <div class="scenario-chips" style="margin-top:24px;">
-      <button class="ai-chip" onclick="setScenario(this)" data-tooltip="Wildfire scenario with high temperature and AQI">🔥 Forest Fire</button>
-      <button class="ai-chip" onclick="setScenario(this)" data-tooltip="Heavy rainfall with relay node failure">⛈️ Relay Failure</button>
-      <button class="ai-chip" onclick="setScenario(this)" data-tooltip="Gas anomaly detected during nighttime">☁️ Gas Anomaly</button>
-      <button class="ai-chip" onclick="setScenario(this)" data-tooltip="Rapid pressure drop indicating incoming storm">🌪️ Pressure Drop</button>
-      <button class="ai-chip" onclick="setScenario(this)" data-tooltip="Node battery depleted, offline unexpectedly">🔋 Node Offline</button>
-      <button class="ai-chip" onclick="setScenario(this)" data-tooltip="Multiple nodes reporting same anomaly simultaneously">⚠️ Multi-Node Alert</button>
-    </div>
-
-    <!-- Input -->
-    <div class="ai-input-wrap" style="margin-top:20px;">
-      <textarea id="ai-input" placeholder="Describe a scenario or paste sensor readings for analysis…" aria-label="Scenario input"></textarea>
-      <div class="ai-input-footer">
-        <span id="ai-char-count" style="font-size:10px;color:#444;">0 chars</span>
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-ghost btn-sm" onclick="clearAI()">Clear</button>
-          <button class="btn btn-primary" id="btn-ai-analyze" onclick="runAI()" data-tooltip="Submit scenario to Gemini or Claude AI">Analyze →</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Output -->
-    <div id="ai-output" style="margin-top:24px;display:none;">
-      <!-- Thinking state -->
-      <div id="ai-thinking" class="ai-thinking-state" style="display:none;">
-        <div style="font-size:11px;color:#555;letter-spacing:0.10em;margin-bottom:12px;">ANALYZING SCENARIO</div>
-        <div class="thinking-dots"><span></span><span></span><span></span></div>
-        <div id="ai-thinking-src" style="font-size:10px;color:#444;margin-top:12px;"></div>
-      </div>
-
-      <!-- Report -->
-      <div id="ai-report">
-        <div class="ai-meta-row">
-          <div class="ai-meta-card" data-tooltip="Assessed severity level">
-            <div class="amc-label">Severity</div>
-            <div class="amc-val" id="ai-severity">—</div>
-          </div>
-          <div class="ai-meta-card" data-tooltip="AI confidence in this assessment">
-            <div class="amc-label">Confidence</div>
-            <div class="amc-val" id="ai-confidence">—</div>
-          </div>
-          <div class="ai-meta-card" data-tooltip="Recommended response type">
-            <div class="amc-label">Response</div>
-            <div class="amc-val" id="ai-response" style="font-size:14px;">—</div>
-          </div>
-          <div class="ai-meta-card" data-tooltip="AI data source used for this analysis">
-            <div class="amc-label">Source</div>
-            <div class="amc-val" id="ai-source" style="font-size:12px;">—</div>
+    <!-- HOW THE MESH WORKS -->
+    <div class="home-section">
+      <div class="hs-label">ARCHITECTURE</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start">
+        <div>
+          <h2 class="d-lg" style="margin-bottom:20px">How the Mesh<br><span class="text-grad">Network Works</span></h2>
+          <p style="color:var(--fog);font-size:15px;line-height:1.9;margin-bottom:18px">
+            Every ESP32 node wakes on a configurable interval (default: 30 seconds), reads all onboard sensors, constructs a JSON telemetry packet, and broadcasts it over ESP-NOW — a lightweight, connectionless wireless protocol developed by Espressif.
+          </p>
+          <p style="color:var(--fog);font-size:15px;line-height:1.9;margin-bottom:18px">
+            Relay nodes receive packets from field nodes and forward them upstream, hop by hop, until the data reaches the Ground Station Gateway. The gateway is the only node connected to the internet. It receives all mesh traffic and pushes it to this dashboard via WebSocket.
+          </p>
+          <p style="color:var(--fog);font-size:15px;line-height:1.9">
+            If a relay node goes offline, surrounding nodes immediately attempt alternate paths. This is transparent to the operator — data continues flowing, possibly with a brief increase in latency.
+          </p>
+          <div style="margin-top:28px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--ink-3);border:1px solid var(--b2);border-radius:var(--r-md)">
+              <span style="font-size:16px">📶</span>
+              <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">Protocol: ESP-NOW</div><div style="font-size:12px;color:var(--fog)">2.4GHz direct peer-to-peer, no WiFi association needed</div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--ink-3);border:1px solid var(--b2);border-radius:var(--r-md)">
+              <span style="font-size:16px">🔁</span>
+              <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">Routing: Store-and-Forward</div><div style="font-size:12px;color:var(--fog)">Packets cached locally if relay is temporarily unavailable</div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--ink-3);border:1px solid var(--b2);border-radius:var(--r-md)">
+              <span style="font-size:16px">⏱️</span>
+              <div><div style="font-size:13px;font-weight:600;margin-bottom:2px">Latency: &lt;800ms per hop</div><div style="font-size:12px;color:var(--fog)">End-to-end latency across 5 hops typically under 4 seconds</div></div>
+            </div>
           </div>
         </div>
-        <div class="ai-body-card" style="margin-top:14px;">
-          <div style="font-size:10px;color:#C8728A;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">Incident Assessment</div>
-          <div id="ai-title" style="font-size:18px;font-weight:500;color:#F0EBE3;margin-bottom:14px;">—</div>
-          <div id="ai-cause" style="font-size:13px;color:#888;line-height:1.8;margin-bottom:14px;"></div>
-          <div style="height:1px;background:rgba(255,255,255,0.06);margin-bottom:14px;"></div>
-          <div style="font-size:10px;color:#555;font-weight:600;letter-spacing:0.10em;text-transform:uppercase;margin-bottom:8px;">Recommended Action</div>
-          <div id="ai-action" style="font-size:13px;color:#C8728A;line-height:1.8;"></div>
-        </div>
-        <div style="display:flex;gap:10px;margin-top:12px;">
-          <button class="btn btn-ghost btn-sm" onclick="saveReport()" data-tooltip="Save this report to the history">Save Report</button>
-          <button class="btn btn-ghost btn-sm" onclick="switchPage(6)" data-tooltip="View all saved reports">View History →</button>
+        <div>
+          <!-- System Architecture Diagram -->
+          <div style="padding:28px;background:var(--ink-2);border:1px solid var(--b2);border-radius:var(--r-xl)">
+            <div class="eyebrow" style="margin-bottom:20px">SYSTEM ARCHITECTURE</div>
+            <div style="display:flex;flex-direction:column;gap:0;align-items:center">
+              <!-- Nodes -->
+              <div style="display:flex;gap:12px;margin-bottom:8px">
+                <div style="text-align:center;padding:10px 14px;background:var(--ink-3);border:1px solid rgba(72,136,200,.3);border-radius:var(--r-md)">
+                  <div style="font-size:18px;margin-bottom:4px">📟</div>
+                  <div style="font-family:var(--f-mono);font-size:9px;color:var(--blue)">NODE_A</div>
+                </div>
+                <div style="text-align:center;padding:10px 14px;background:var(--ink-3);border:1px solid rgba(72,136,200,.3);border-radius:var(--r-md)">
+                  <div style="font-size:18px;margin-bottom:4px">📟</div>
+                  <div style="font-family:var(--f-mono);font-size:9px;color:var(--blue)">NODE_C</div>
+                </div>
+                <div style="text-align:center;padding:10px 14px;background:var(--ink-3);border:1px solid rgba(201,138,44,.3);border-radius:var(--r-md)">
+                  <div style="font-size:18px;margin-bottom:4px">📱</div>
+                  <div style="font-family:var(--f-mono);font-size:9px;color:var(--amber)">HH_01</div>
+                </div>
+              </div>
+              <div style="font-size:14px;color:var(--maroon-hi);animation:arrowPulse 1.8s infinite">↓ ESP-NOW</div>
+              <!-- Relay -->
+              <div style="padding:12px 24px;background:var(--ink-3);border:1px solid rgba(29,184,122,.3);border-radius:var(--r-md);margin:6px 0">
+                <div style="text-align:center"><div style="font-size:20px;margin-bottom:4px">🔁</div><div style="font-family:var(--f-mono);font-size:9px;color:var(--emerald)">RELAY NODE_B</div></div>
+              </div>
+              <div style="font-size:14px;color:var(--maroon-hi);animation:arrowPulse 1.8s .3s infinite">↓ Multi-hop</div>
+              <!-- Gateway -->
+              <div style="padding:14px 32px;background:linear-gradient(135deg,rgba(139,26,46,.15),rgba(139,26,46,.05));border:1px solid rgba(139,26,46,.4);border-radius:var(--r-md);margin:6px 0">
+                <div style="text-align:center"><div style="font-size:22px;margin-bottom:4px">🏠</div><div style="font-family:var(--f-mono);font-size:9px;color:var(--rose-pale)">GROUND STATION</div></div>
+              </div>
+              <div style="font-size:14px;color:var(--maroon-hi);animation:arrowPulse 1.8s .6s infinite">↓ WebSocket + HTTP</div>
+              <!-- Dashboard -->
+              <div style="display:flex;gap:10px;margin-top:6px">
+                <div style="text-align:center;padding:10px 14px;background:var(--ink-3);border:1px solid var(--b2);border-radius:var(--r-md)">
+                  <div style="font-size:16px;margin-bottom:4px">💻</div>
+                  <div style="font-family:var(--f-mono);font-size:9px;color:var(--fog)">DASHBOARD</div>
+                </div>
+                <div style="text-align:center;padding:10px 14px;background:var(--ink-3);border:1px solid var(--b2);border-radius:var(--r-md)">
+                  <div style="font-size:16px;margin-bottom:4px">🧠</div>
+                  <div style="font-family:var(--f-mono);font-size:9px;color:var(--fog)">AI ENGINE</div>
+                </div>
+                <div style="text-align:center;padding:10px 14px;background:var(--ink-3);border:1px solid var(--b2);border-radius:var(--r-md)">
+                  <div style="font-size:16px;margin-bottom:4px">🛢️</div>
+                  <div style="font-family:var(--f-mono);font-size:9px;color:var(--fog)">DATABASE</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Saved reports -->
-    <div style="margin-top:40px;">
-      <div class="eyebrow" style="margin-bottom:16px;">Recent Reports</div>
-      <div id="saved-reports">
-        <div class="mp-empty" style="padding:20px;border:1px solid rgba(255,255,255,0.04);border-radius:10px;">No saved reports yet. Run an analysis to begin.</div>
+    <!-- DATA PIPELINE -->
+    <div class="home-section">
+      <div class="hs-label">END-TO-END PIPELINE</div>
+      <h2 class="d-lg" style="margin-bottom:8px">From Sensor to <span class="text-grad">Intelligence</span></h2>
+      <p style="color:var(--fog);font-size:14px;max-width:600px;margin-bottom:32px;line-height:1.8">Every data point travels through a validated pipeline. Local sensor readings are merged with web API context to produce a scientifically enriched view.</p>
+      <div class="pipeline-strip">
+        <div class="pipe-step"><div class="pipe-icon" style="border-color:rgba(72,136,200,.4);background:rgba(72,136,200,.08)">🌡️</div><div class="pipe-name">ESP32 Sensor</div></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step"><div class="pipe-icon">📡</div><div class="pipe-name">ESP-NOW Radio</div></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step"><div class="pipe-icon">🔁</div><div class="pipe-name">Relay Hop</div></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step"><div class="pipe-icon" style="border-color:rgba(139,26,46,.4);background:rgba(139,26,46,.08)">🏠</div><div class="pipe-name">Ground Station</div></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step"><div class="pipe-icon">🛢️</div><div class="pipe-name">SQLite DB</div></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step"><div class="pipe-icon" style="border-color:rgba(29,184,122,.4);background:rgba(29,184,122,.08)">🌐</div><div class="pipe-name">API Context</div></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step"><div class="pipe-icon">🧠</div><div class="pipe-name">Gemini AI</div></div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step"><div class="pipe-icon" style="border-color:rgba(139,26,46,.4);background:rgba(139,26,46,.08)">💻</div><div class="pipe-name">Dashboard</div></div>
+      </div>
+      <!-- Example payload -->
+      <div style="margin-top:28px;padding:20px 24px;background:var(--ink-2);border:1px solid var(--b2);border-radius:var(--r-lg);overflow-x:auto">
+        <div class="eyebrow" style="margin-bottom:12px">EXAMPLE ESP32 TELEMETRY PAYLOAD</div>
+        <pre style="font-family:var(--f-mono);font-size:12px;color:var(--fog);line-height:1.8">{
+  <span style="color:var(--blue)">"node_id"</span>:    <span style="color:var(--emerald)">"NODE_A"</span>,
+  <span style="color:var(--blue)">"temperature"</span>: <span style="color:var(--rose-pale)">29.4</span>,   <span style="color:var(--smoke)">// °C — DHT22</span>
+  <span style="color:var(--blue)">"humidity"</span>:    <span style="color:var(--rose-pale)">61.2</span>,   <span style="color:var(--smoke)">// %RH — DHT22</span>
+  <span style="color:var(--blue)">"pressure"</span>:    <span style="color:var(--rose-pale)">1008.5</span>, <span style="color:var(--smoke)">// hPa — BMP280</span>
+  <span style="color:var(--blue)">"aqi"</span>:         <span style="color:var(--rose-pale)">143</span>,    <span style="color:var(--smoke)">// AQI — MQ-135</span>
+  <span style="color:var(--blue)">"rainfall"</span>:    <span style="color:var(--rose-pale)">0.0</span>,    <span style="color:var(--smoke)">// mm/h — Rain sensor</span>
+  <span style="color:var(--blue)">"wind_speed"</span>:  <span style="color:var(--rose-pale)">3.2</span>,    <span style="color:var(--smoke)">// km/h — Anemometer</span>
+  <span style="color:var(--blue)">"battery"</span>:     <span style="color:var(--rose-pale)">87</span>,     <span style="color:var(--smoke)">// % — INA219 current sensor</span>
+  <span style="color:var(--blue)">"rssi"</span>:         <span style="color:var(--rose-pale)">-68</span>,    <span style="color:var(--smoke)">// dBm — link quality</span>
+  <span style="color:var(--blue)">"relay_path"</span>:  <span style="color:var(--emerald)">"NODE_B→GROUND"</span>,
+  <span style="color:var(--blue)">"timestamp"</span>:   <span style="color:var(--emerald)">"2026-06-11T14:22:00Z"</span>
+}</pre>
       </div>
     </div>
+
+    <!-- SENSORS -->
+    <div class="home-section">
+      <div class="hs-label">HARDWARE</div>
+      <h2 class="d-lg" style="margin-bottom:8px">Sensor <span class="text-grad">Capabilities</span></h2>
+      <p style="color:var(--fog);font-size:14px;max-width:600px;margin-bottom:28px;line-height:1.8">Each node monitors a comprehensive set of environmental parameters using commodity sensors costing under ₹800 total per node.</p>
+      <div class="sensor-grid">
+        <div class="sensor-pill"><span class="sp-icon">🌡️</span><div><div class="sp-name">Temperature</div><div class="sp-unit">°C · DHT22</div></div></div>
+        <div class="sensor-pill"><span class="sp-icon">💧</span><div><div class="sp-name">Humidity</div><div class="sp-unit">%RH · DHT22</div></div></div>
+        <div class="sensor-pill"><span class="sp-icon">🫀</span><div><div class="sp-name">Pressure</div><div class="sp-unit">hPa · BMP280</div></div></div>
+        <div class="sensor-pill"><span class="sp-icon">💨</span><div><div class="sp-name">Air Quality</div><div class="sp-unit">AQI · MQ-135</div></div></div>
+        <div class="sensor-pill"><span class="sp-icon">🌧️</span><div><div class="sp-name">Rainfall</div><div class="sp-unit">mm/h · YL-83</div></div></div>
+        <div class="sensor-pill"><span class="sp-icon">🌬️</span><div><div class="sp-name">Wind Speed</div><div class="sp-unit">km/h · Anemometer</div></div></div>
+        <div class="sensor-pill"><span class="sp-icon">☀️</span><div><div class="sp-name">Light State</div><div class="sp-unit">Day/Night · LDR</div></div></div>
+        <div class="sensor-pill"><span class="sp-icon">🔋</span><div><div class="sp-name">Battery Voltage</div><div class="sp-unit">mV · INA219</div></div></div>
+        <div class="sensor-pill"><span class="sp-icon">📶</span><div><div class="sp-name">RSSI / SNR</div><div class="sp-unit">dBm · ESP-NOW</div></div></div>
+        <div class="sensor-pill"><span class="sp-icon">🧭</span><div><div class="sp-name">GPS (optional)</div><div class="sp-unit">lat/lon · NEO-6M</div></div></div>
+        <div class="sensor-pill"><span class="sp-icon">🌊</span><div><div class="sp-name">Soil Moisture</div><div class="sp-unit">% · Capacitive</div></div></div>
+        <div class="sensor-pill"><span class="sp-icon">🔆</span><div><div class="sp-name">UV Index</div><div class="sp-unit">UVI · GUVA-S12</div></div></div>
+      </div>
+    </div>
+
+    <!-- WEB DATA & AI -->
+    <div class="home-section">
+      <div class="hs-label">DATA FUSION</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:36px">
+        <div>
+          <h2 class="d-lg" style="margin-bottom:16px">Web Data <span class="text-grad">Context</span></h2>
+          <p style="color:var(--fog);font-size:14px;line-height:1.9;margin-bottom:16px">Local sensor readings alone tell only part of the story. Guardian Mesh enriches every reading with real-time external context from verified scientific APIs:</p>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--ink-3);border-radius:var(--r-md)"><span style="font-size:16px;flex-shrink:0">🌤️</span><div><div style="font-size:13px;font-weight:500;margin-bottom:2px">Open-Meteo</div><div style="font-size:12px;color:var(--fog)">Weather forecasts, historical climate data — no API key required</div></div></div>
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--ink-3);border-radius:var(--r-md)"><span style="font-size:16px;flex-shrink:0">🍃</span><div><div style="font-size:13px;font-weight:500;margin-bottom:2px">AQICN / OpenAQ</div><div style="font-size:12px;color:var(--fog)">City-level air quality index for cross-validation with local sensors</div></div></div>
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--ink-3);border-radius:var(--r-md)"><span style="font-size:16px;flex-shrink:0">🛸</span><div><div style="font-size:13px;font-weight:500;margin-bottom:2px">NASA FIRMS</div><div style="font-size:12px;color:var(--fog)">Satellite thermal anomaly detection — wildfire hotspots within 50km</div></div></div>
+          </div>
+        </div>
+        <div>
+          <h2 class="d-lg" style="margin-bottom:16px">AI <span class="text-grad">Intelligence</span></h2>
+          <p style="color:var(--fog);font-size:14px;line-height:1.9;margin-bottom:16px">When multi-node anomalies are detected, Guardian Mesh submits the full sensor context plus web data to Gemini AI, which generates a structured incident report:</p>
+          <div style="padding:20px;background:var(--ink-2);border:1px solid var(--b2);border-radius:var(--r-lg)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><span class="badge badge-crimson">CRITICAL</span><span class="badge badge-ghost">GEMINI AI</span><span class="badge badge-ghost">94% Confidence</span></div>
+            <div style="font-family:var(--f-display);font-size:16px;font-weight:600;margin-bottom:8px;color:var(--ivory)">Wildfire Signature Detected</div>
+            <div style="font-size:12px;color:var(--fog);line-height:1.7;margin-bottom:12px">Temperature and AQI readings significantly exceed thresholds. Wind pattern and rapid humidity drop suggest active combustion. Cross-referencing with NASA FIRMS confirms 2 hotspots within 15km.</div>
+            <div style="font-size:12px;font-weight:600;color:var(--ivory)">→ Dispatch ground unit to Grid 7-North. Initiate evacuation protocol within 5km radius.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="home-cta">
+      <div class="eyebrow accent" style="margin-bottom:16px">READY TO EXPLORE</div>
+      <h2 class="d-lg" style="margin-bottom:14px">Enter the <span class="text-grad">Control System</span></h2>
+      <p style="color:var(--fog);font-size:15px;max-width:500px;margin:0 auto 32px;line-height:1.8">Navigate through Web Data, Sensor Data, and Twin Sense to explore how Guardian Mesh fuses local and global environmental intelligence.</p>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="switchPage(2)">→ Web Data</button>
+        <button class="btn btn-outline" onclick="switchPage(3)">Sensor Data</button>
+        <button class="btn btn-outline" onclick="switchPage(4)">Twin Sense</button>
+        <button class="btn btn-ghost" onclick="switchPage(7)">Roadmap</button>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE 2: WEB DATA
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="page" id="page-2">
+    <div class="tab-page">
+      <div class="tab-header">
+        <div><div class="eyebrow accent" style="margin-bottom:6px">EXTERNAL CONTEXT · WEB DATA STATION</div><h2 class="d-md">Environmental Web Context</h2></div>
+        <div class="flex items-center gap-2"><span class="badge badge-live">AUTO-SYNC</span><span id="wd-refresh" class="badge badge-ghost">Last: --</span></div>
+      </div>
+
+      <!-- Source Bar -->
+      <div class="source-bar">
+        <div class="src-item"><div class="src-dot" id="src-meteo-dot" style="background:var(--smoke)"></div>Open-Meteo<span class="badge badge-ghost" id="src-meteo-st" style="margin-left:4px">—</span></div>
+        <div class="src-item"><div class="src-dot" id="src-aqi-dot" style="background:var(--smoke)"></div>AQICN<span class="badge badge-ghost" id="src-aqi-st" style="margin-left:4px">—</span></div>
+        <div class="src-item"><div class="src-dot" id="src-firms-dot" style="background:var(--smoke)"></div>NASA FIRMS<span class="badge badge-ghost" id="src-firms-st" style="margin-left:4px">—</span></div>
+        <div class="src-item" style="margin-left:auto;border-right:none"><span style="font-family:var(--f-mono);font-size:9px;color:var(--smoke)">Location: Bengaluru, India · 12.97°N 77.59°E</span></div>
+      </div>
+
+      <!-- Weather Cards -->
+      <div class="weather-grid">
+        <div class="weather-card panel"><div class="wc-tag"><span class="badge badge-ghost" style="font-size:9px">OPEN-METEO</span></div><div class="wc-icon">🌡️</div><div class="wc-label">Temperature</div><div><span class="wc-val" id="w-temp">--</span><span class="wc-unit">°C</span></div><div class="wc-sub" id="w-temp-sub">Fetching…</div></div>
+        <div class="weather-card panel"><div class="wc-tag"><span class="badge badge-ghost" style="font-size:9px">OPEN-METEO</span></div><div class="wc-icon">💧</div><div class="wc-label">Humidity</div><div><span class="wc-val" id="w-hum">--</span><span class="wc-unit">%</span></div><div class="wc-sub" id="w-hum-sub">Fetching…</div></div>
+        <div class="weather-card panel"><div class="wc-tag"><span class="badge badge-ghost" style="font-size:9px">OPEN-METEO</span></div><div class="wc-icon">🌬️</div><div class="wc-label">Wind Speed</div><div><span class="wc-val" id="w-wind">--</span><span class="wc-unit">km/h</span></div><div class="wc-sub" id="w-wind-sub">Fetching…</div></div>
+        <div class="weather-card panel"><div class="wc-tag"><span class="badge badge-ghost" style="font-size:9px">OPEN-METEO</span></div><div class="wc-icon">🫀</div><div class="wc-label">Pressure</div><div><span class="wc-val" id="w-pres">--</span><span class="wc-unit">hPa</span></div><div class="wc-sub" id="w-desc">—</div></div>
+      </div>
+
+      <!-- Second Row -->
+      <div class="climate-row">
+        <!-- AQI Panel -->
+        <div class="panel p-5">
+          <div class="eyebrow" style="margin-bottom:14px">AIR QUALITY · AQICN</div>
+          <div class="flex items-center gap-4">
+            <div>
+              <div class="wc-val" id="wd-aqi" style="font-size:48px">--</div>
+              <div class="wc-sub" id="wd-aqi-cat">Air Quality Index</div>
+              <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">
+                <span class="badge badge-ghost" id="wd-aqi-src">Source: —</span>
+                <span class="badge" id="wd-aqi-badge" style="background:var(--emerald-lo);color:var(--emerald);border-color:rgba(29,184,122,.3)">GOOD</span>
+              </div>
+            </div>
+            <div class="flex-col gap-2" style="flex:1">
+              <div class="chart-label">AQI History (6h)</div>
+              <div class="chart-wrap" style="height:80px"><canvas id="wd-aqi-chart"></canvas></div>
+            </div>
+          </div>
+        </div>
+        <!-- Fire Risk -->
+        <div class="panel">
+          <div class="firms-panel">
+            <div>
+              <div class="eyebrow" style="margin-bottom:6px">NASA FIRMS</div>
+              <div class="firms-count" id="wd-firms">0</div>
+              <div style="font-family:var(--f-mono);font-size:10px;color:var(--fog);margin-top:4px">hotspots · 50km</div>
+            </div>
+            <div>
+              <div style="font-family:var(--f-mono);font-size:10px;color:var(--fog);margin-bottom:6px">Fire Risk</div>
+              <div class="badge" id="wd-risk-badge" style="background:var(--emerald-lo);color:var(--emerald);border-color:rgba(29,184,122,.3)">LOW</div>
+              <p style="font-family:var(--f-mono);font-size:9px;color:var(--smoke);margin-top:8px;line-height:1.6" id="wd-firms-desc">No thermal anomalies in scan area.</p>
+            </div>
+          </div>
+        </div>
+        <!-- Rain -->
+        <div class="panel p-5">
+          <div class="eyebrow" style="margin-bottom:10px">PRECIPITATION</div>
+          <div style="font-family:var(--f-mono);font-size:32px;font-weight:600;color:var(--ivory)" id="wd-rain">--<span style="font-size:14px;color:var(--fog)">mm/h</span></div>
+          <div style="font-family:var(--f-mono);font-size:10px;color:var(--fog);margin-top:4px" id="wd-rain-prob">Probability: --%</div>
+        </div>
+      </div>
+
+      <!-- Climate Chart -->
+      <div class="g2" style="margin-top:16px">
+        <div class="panel p-4">
+          <div class="chart-label">Temperature Trend (24h API)</div>
+          <div class="chart-wrap" style="height:160px"><canvas id="wd-temp-chart"></canvas></div>
+        </div>
+        <div class="panel p-4">
+          <div class="chart-label">Humidity Trend (24h API)</div>
+          <div class="chart-wrap" style="height:160px"><canvas id="wd-hum-chart"></canvas></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE 3: SENSOR DATA — INSTRUMENT PANEL
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="page" id="page-3">
+    <div class="sensor-page">
+      <div class="tab-header">
+        <div><div class="eyebrow accent" style="margin-bottom:6px">LOCAL ESP32 TELEMETRY · SENSOR DATA</div><h2 class="d-md">Field Sensor Instruments</h2></div>
+        <div class="flex items-center gap-2"><span class="badge badge-live">LIVE</span><span class="badge badge-ghost" id="sd-node-badge">NODE_A</span><span class="badge badge-ghost" id="sd-last-update">--:--:--</span></div>
+      </div>
+
+      <!-- Node Selector -->
+      <div class="sensor-node-bar">
+        <div class="eyebrow" style="flex-shrink:0;align-self:center">SELECT NODE:</div>
+        <div class="node-chip active" onclick="selectSensorNode('NODE_A',this)"><div class="node-chip-dot" style="background:var(--emerald);box-shadow:0 0 5px var(--emerald)"></div>NODE_A — North Ridge</div>
+        <div class="node-chip" onclick="selectSensorNode('NODE_B',this)"><div class="node-chip-dot" style="background:var(--emerald);box-shadow:0 0 5px var(--emerald)"></div>NODE_B — Forest Edge</div>
+        <div class="node-chip" onclick="selectSensorNode('NODE_C',this)"><div class="node-chip-dot" style="background:var(--emerald);box-shadow:0 0 5px var(--emerald)"></div>NODE_C — Canyon Post</div>
+        <div class="node-chip" onclick="selectSensorNode('HH_01',this)"><div class="node-chip-dot" style="background:var(--amber);box-shadow:0 0 5px var(--amber)"></div>HH_01 — Ranger Patrol</div>
+        <div class="node-chip" onclick="selectSensorNode('NODE_D',this)" style="opacity:.5"><div class="node-chip-dot" style="background:var(--smoke)"></div>NODE_D — OFFLINE</div>
+      </div>
+
+      <!-- Instrument Grid -->
+      <div class="instrument-grid">
+        <div class="instrument-card panel" id="ic-temp">
+          <div class="ic-header"><div class="ic-label">Temperature</div><div class="ic-led ok"></div></div>
+          <div class="ic-value-wrap"><span class="ic-value" id="ic-v-temp">--</span><span class="ic-unit">°C</span><span class="ic-trend trend-up" id="ic-tr-temp">↑</span></div>
+          <div class="ic-bar-wrap"><div class="ic-bar-fill" id="ic-b-temp" style="width:0%;background:linear-gradient(90deg,var(--maroon),var(--rose))"></div></div>
+          <div class="ic-meta"><span id="ic-src-temp">NODE_A · DHT22</span><span id="ic-ts-temp">--:--</span></div>
+          <div class="ic-spark"><canvas id="sp-temp"></canvas></div>
+          <div style="display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:9px;color:var(--smoke);margin-top:4px"><span>Threshold: 40°C</span><span id="ic-conf-temp">Conf: 98%</span></div>
+        </div>
+
+        <div class="instrument-card panel" id="ic-hum">
+          <div class="ic-header"><div class="ic-label">Humidity</div><div class="ic-led ok"></div></div>
+          <div class="ic-value-wrap"><span class="ic-value" id="ic-v-hum">--</span><span class="ic-unit">%RH</span></div>
+          <div class="ic-bar-wrap"><div class="ic-bar-fill" id="ic-b-hum" style="width:0%;background:linear-gradient(90deg,#1d6b9a,#1d9688)"></div></div>
+          <div class="ic-meta"><span>NODE_A · DHT22</span><span id="ic-ts-hum">--:--</span></div>
+          <div class="ic-spark"><canvas id="sp-hum"></canvas></div>
+          <div style="display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:9px;color:var(--smoke);margin-top:4px"><span>Normal: 40–80%</span><span>Conf: 97%</span></div>
+        </div>
+
+        <div class="instrument-card panel" id="ic-pres">
+          <div class="ic-header"><div class="ic-label">Pressure</div><div class="ic-led ok"></div></div>
+          <div class="ic-value-wrap"><span class="ic-value" id="ic-v-pres">--</span><span class="ic-unit">hPa</span></div>
+          <div class="ic-bar-wrap"><div class="ic-bar-fill" id="ic-b-pres" style="width:0%;background:linear-gradient(90deg,#7b52b8,#9B72C8)"></div></div>
+          <div class="ic-meta"><span>NODE_A · BMP280</span><span id="ic-ts-pres">--:--</span></div>
+          <div class="ic-spark"><canvas id="sp-pres"></canvas></div>
+          <div style="display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:9px;color:var(--smoke);margin-top:4px"><span>Sea level: 1013 hPa</span><span>Conf: 99%</span></div>
+        </div>
+
+        <div class="instrument-card panel" id="ic-aqi">
+          <div class="ic-header"><div class="ic-label">Air Quality</div><div class="ic-led ok" id="ic-led-aqi"></div></div>
+          <div class="ic-value-wrap"><span class="ic-value" id="ic-v-aqi">--</span><span class="ic-unit">AQI</span><span class="ic-trend" id="ic-aqi-cat" style="font-size:10px;color:var(--emerald)">GOOD</span></div>
+          <div class="ic-bar-wrap"><div class="ic-bar-fill" id="ic-b-aqi" style="width:0%;background:linear-gradient(90deg,var(--emerald),var(--amber))"></div></div>
+          <div class="ic-meta"><span>NODE_A · MQ-135</span><span id="ic-ts-aqi">--:--</span></div>
+          <div class="ic-spark"><canvas id="sp-aqi"></canvas></div>
+          <div style="display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:9px;color:var(--smoke);margin-top:4px"><span>Alert: &gt;150 AQI</span><span>Conf: 85%</span></div>
+        </div>
+
+        <div class="instrument-card panel">
+          <div class="ic-header"><div class="ic-label">Rainfall</div><div class="ic-led ok"></div></div>
+          <div class="ic-value-wrap"><span class="ic-value" id="ic-v-rain">--</span><span class="ic-unit">mm/h</span></div>
+          <div class="ic-bar-wrap"><div class="ic-bar-fill" id="ic-b-rain" style="width:0%;background:linear-gradient(90deg,#1d6b9a,#4888C8)"></div></div>
+          <div class="ic-meta"><span>NODE_A · YL-83</span><span>Sampling: 30s</span></div>
+          <div class="ic-spark"><canvas id="sp-rain"></canvas></div>
+        </div>
+
+        <div class="instrument-card panel">
+          <div class="ic-header"><div class="ic-label">Wind Speed</div><div class="ic-led ok"></div></div>
+          <div class="ic-value-wrap"><span class="ic-value" id="ic-v-wind">--</span><span class="ic-unit">km/h</span></div>
+          <div class="ic-bar-wrap"><div class="ic-bar-fill" id="ic-b-wind" style="width:0%;background:linear-gradient(90deg,#2d7a5a,var(--teal))"></div></div>
+          <div class="ic-meta"><span>Anemometer</span><span>Alert: &gt;50 km/h</span></div>
+          <div class="ic-spark"><canvas id="sp-wind"></canvas></div>
+        </div>
+
+        <div class="instrument-card panel">
+          <div class="ic-header"><div class="ic-label">Battery</div><div class="ic-led ok" id="ic-led-bat"></div></div>
+          <div class="ic-value-wrap"><span class="ic-value" id="ic-v-bat">--</span><span class="ic-unit">%</span></div>
+          <div class="ic-bar-wrap"><div class="ic-bar-fill" id="ic-b-bat" style="width:0%;background:linear-gradient(90deg,var(--crimson),var(--amber),var(--emerald))"></div></div>
+          <div class="ic-meta"><span>INA219</span><span id="ic-bat-est">Runtime: --h</span></div>
+          <div class="ic-spark"><canvas id="sp-bat"></canvas></div>
+        </div>
+
+        <div class="instrument-card panel">
+          <div class="ic-header"><div class="ic-label">Signal Strength</div><div class="ic-led ok" id="ic-led-rssi"></div></div>
+          <div class="ic-value-wrap"><span class="ic-value" id="ic-v-rssi">--</span><span class="ic-unit">dBm</span></div>
+          <div class="ic-bar-wrap"><div class="ic-bar-fill" id="ic-b-rssi" style="width:0%;background:linear-gradient(90deg,var(--crimson),var(--emerald))"></div></div>
+          <div class="ic-meta"><span>ESP-NOW RSSI</span><span id="ic-rssi-qual">—</span></div>
+          <div class="ic-spark"><canvas id="sp-rssi"></canvas></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE 4: TWIN SENSE — COMPARISON LAB
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="page" id="page-4">
+    <div class="twin-page">
+      <div class="tab-header">
+        <div><div class="eyebrow accent" style="margin-bottom:6px">SENSOR FUSION · TWIN SENSE</div><h2 class="d-md">Local vs. Web Data Synthesis</h2></div>
+        <div class="flex items-center gap-2"><span class="badge badge-violet">SCIENTIFIC COMPARISON</span><span class="badge badge-live">LIVE</span></div>
+      </div>
+
+      <div class="twin-layout">
+
+        <!-- LEFT: Local ESP32 -->
+        <div class="panel flex-col" style="overflow:hidden">
+          <div class="twin-col-title">
+            ESP32 LOCAL DATA
+            <span class="badge badge-emerald">SENSOR</span>
+          </div>
+          <div class="twin-row"><div class="tr-metric">Temperature</div><div class="tr-val"><span id="ts-temp-l">--</span> °C</div><div class="tr-sub">NODE_A · DHT22 · 2s ago</div></div>
+          <div class="twin-row"><div class="tr-metric">Humidity</div><div class="tr-val"><span id="ts-hum-l">--</span> %</div><div class="tr-sub">NODE_A · DHT22</div></div>
+          <div class="twin-row"><div class="tr-metric">Pressure</div><div class="tr-val"><span id="ts-pres-l">--</span> hPa</div><div class="tr-sub">BMP280 · Calibrated</div></div>
+          <div class="twin-row"><div class="tr-metric">Air Quality</div><div class="tr-val"><span id="ts-aqi-l">--</span> AQI</div><div class="tr-sub">MQ-135 · 85% confidence</div></div>
+          <div class="twin-row"><div class="tr-metric">Wind Speed</div><div class="tr-val"><span id="ts-wind-l">--</span> km/h</div><div class="tr-sub">Anemometer</div></div>
+          <div class="twin-row"><div class="tr-metric">Rainfall</div><div class="tr-val"><span id="ts-rain-l">--</span> mm/h</div><div class="tr-sub">YL-83 Rain Sensor</div></div>
+        </div>
+
+        <!-- CENTER -->
+        <div class="twin-center">
+          <!-- Comparison Chart -->
+          <div class="panel p-4">
+            <div class="chart-label">Normalized Comparison (0–100 scale)</div>
+            <div class="chart-wrap" style="height:180px"><canvas id="twin-radar"></canvas></div>
+          </div>
+          <!-- Delta Table -->
+          <div class="panel" style="overflow:hidden">
+            <table class="delta-table w-full">
+              <thead><tr><th>Metric</th><th>Local</th><th>API</th><th>Δ Delta</th><th>Confidence</th><th>Status</th></tr></thead>
+              <tbody id="twin-delta-body"></tbody>
+            </table>
+          </div>
+          <!-- Anomaly Callout -->
+          <div id="twin-anomaly" class="anomaly-banner ok">
+            <span style="font-size:18px">✅</span>
+            <div><div style="font-size:13px;font-weight:600;margin-bottom:3px" id="twin-anom-title">All sensors within normal range</div><div style="font-size:12px;color:var(--fog)" id="twin-anom-body">Local and API data are consistent. No anomalies detected.</div></div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Web API -->
+        <div class="panel flex-col" style="overflow:hidden">
+          <div class="twin-col-title">
+            WEB API CONTEXT
+            <span class="badge badge-blue">EXTERNAL</span>
+          </div>
+          <div class="twin-row"><div class="tr-metric">Temperature</div><div class="tr-val"><span id="ts-temp-r">--</span> °C</div><div class="tr-sub">Open-Meteo · 5m cache</div></div>
+          <div class="twin-row"><div class="tr-metric">Humidity</div><div class="tr-val"><span id="ts-hum-r">--</span> %</div><div class="tr-sub">Open-Meteo</div></div>
+          <div class="twin-row"><div class="tr-metric">Pressure</div><div class="tr-val"><span id="ts-pres-r">--</span> hPa</div><div class="tr-sub">Open-Meteo</div></div>
+          <div class="twin-row"><div class="tr-metric">Air Quality</div><div class="tr-val"><span id="ts-aqi-r">--</span> AQI</div><div class="tr-sub">AQICN · City station</div></div>
+          <div class="twin-row"><div class="tr-metric">Wind Speed</div><div class="tr-val"><span id="ts-wind-r">--</span> km/h</div><div class="tr-sub">Open-Meteo</div></div>
+          <div class="twin-row"><div class="tr-metric">Fire Hotspots</div><div class="tr-val" id="ts-firms-r" style="color:var(--crimson)">0 <span style="font-size:12px;color:var(--fog)">within 50km</span></div><div class="tr-sub">NASA FIRMS</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE 5: HISTORY
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="page" id="page-5">
+    <div class="hist-page">
+      <div class="tab-header">
+        <div><div class="eyebrow accent" style="margin-bottom:6px">OPERATIONAL ARCHIVE</div><h2 class="d-md">History &amp; Analytics</h2></div>
+        <div class="flex items-center gap-2">
+          <select id="hist-range" onchange="loadHistory(this.value)" style="background:var(--ink-3);border:1px solid var(--b2);color:var(--fog);font-family:var(--f-mono);font-size:11px;padding:5px 10px;border-radius:var(--r-sm);outline:none">
+            <option value="1h">1 Hour</option>
+            <option value="6h">6 Hours</option>
+            <option value="24h" selected>24 Hours</option>
+            <option value="7d">7 Days</option>
+          </select>
+          <button class="btn btn-sm btn-outline" onclick="exportCSV()">↓ CSV</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px">
+        <div class="panel p-4 text-center"><div class="eyebrow" style="margin-bottom:5px">Records</div><div class="d-md" id="hs-records">--</div></div>
+        <div class="panel p-4 text-center"><div class="eyebrow" style="margin-bottom:5px">Nodes</div><div class="d-md" id="hs-nodes">--</div></div>
+        <div class="panel p-4 text-center"><div class="eyebrow" style="margin-bottom:5px">Alerts</div><div class="d-md text-crimson" id="hs-alerts">--</div></div>
+        <div class="panel p-4 text-center"><div class="eyebrow" style="margin-bottom:5px">AI Reports</div><div class="d-md" style="color:var(--rose-pale)" id="hs-ai">--</div></div>
+      </div>
+      <div class="htab-strip">
+        <button class="htab active" onclick="switchHistTab('logs',this)">Telemetry Logs</button>
+        <button class="htab" onclick="switchHistTab('timeline',this)">Event Timeline</button>
+        <button class="htab" onclick="switchHistTab('charts',this)">Analytics</button>
+        <button class="htab" onclick="switchHistTab('reports',this)">AI Reports</button>
+      </div>
+      <div id="htab-logs"><div class="panel" style="overflow:hidden"><div style="max-height:400px;overflow-y:auto"><table class="data-table w-full"><thead style="position:sticky;top:0;background:rgba(8,8,15,.97);backdrop-filter:blur(8px)"><tr><th>Timestamp</th><th>Node</th><th>Temp</th><th>Hum</th><th>Press</th><th>AQI</th><th>Wind</th><th>Bat</th><th>RSSI</th><th>Status</th></tr></thead><tbody id="hist-body"></tbody></table></div></div></div>
+      <div id="htab-timeline" style="display:none"><div class="panel p-5"><div class="timeline" id="event-timeline"></div></div></div>
+      <div id="htab-charts" style="display:none"><div class="g2" style="margin-bottom:14px"><div class="panel p-4"><div class="chart-label">Temperature</div><div class="chart-wrap" style="height:180px"><canvas id="hist-temp-chart"></canvas></div></div><div class="panel p-4"><div class="chart-label">AQI</div><div class="chart-wrap" style="height:180px"><canvas id="hist-aqi-chart"></canvas></div></div></div><div class="g2"><div class="panel p-4"><div class="chart-label">Battery Levels</div><div class="chart-wrap" style="height:180px"><canvas id="hist-bat-chart"></canvas></div></div><div class="panel p-4"><div class="chart-label">Rainfall</div><div class="chart-wrap" style="height:180px"><canvas id="hist-rain-chart"></canvas></div></div></div></div>
+      <div id="htab-reports" style="display:none"><div id="ai-reports-list" class="flex-col gap-3"></div></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE 6: AI COMMAND
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="page" id="page-6">
+    <div class="ai-page">
+      <div class="ai-console">
+        <div><div class="eyebrow accent" style="margin-bottom:5px">AI INCIDENT ANALYSIS ENGINE</div><h2 class="d-md" style="margin-bottom:5px">AI Command Center</h2><p style="font-size:12px;color:var(--fog)">Submit a scenario to receive a structured AI incident report fusing sensor data and web context.</p></div>
+        <div><div class="eyebrow" style="margin-bottom:8px">QUICK SCENARIOS</div><div class="scenario-chips"><div class="sc-chip" onclick="setScenario(this,'fire')">🔥 Forest Fire</div><div class="sc-chip" onclick="setScenario(this,'flood')">💧 Flash Flood</div><div class="sc-chip" onclick="setScenario(this,'gas')">☁️ Gas Anomaly</div><div class="sc-chip" onclick="setScenario(this,'relay')">📡 Relay Failure</div><div class="sc-chip" onclick="setScenario(this,'pressure')">🌪️ Pressure Drop</div><div class="sc-chip" onclick="setScenario(this,'multi')">⚠️ Multi-Node</div></div></div>
+        <textarea id="ai-input" class="ai-textarea" placeholder="Describe the incident or paste telemetry…"></textarea>
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 13px;background:var(--ink-3);border-radius:var(--r-md);border:1px solid var(--b2)"><input type="checkbox" id="inject-ctx" checked style="accent-color:var(--maroon)"><label for="inject-ctx" style="font-size:11px;color:var(--fog);cursor:pointer">Inject current sensor telemetry</label><span class="badge badge-ghost" id="ai-provider-badge" style="margin-left:auto;font-size:9px">FALLBACK</span></div>
+        <button class="btn btn-primary w-full" onclick="runAI()" id="btn-ai-run">⚡ Analyze Incident</button>
+      </div>
+      <div class="ai-result">
+        <div id="ai-idle" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;padding:40px"><div style="font-size:44px;opacity:.15">🧠</div><div class="eyebrow">AWAITING SCENARIO</div><p style="font-size:12px;color:var(--smoke);max-width:220px;line-height:1.7">Select a preset or describe an incident to begin analysis.</p></div>
+        <div id="ai-thinking" style="display:none"><div class="ai-thinking"><div class="think-dots"><span></span><span></span><span></span></div><div><div style="font-family:var(--f-mono);font-size:10px;color:var(--rose-pale)" id="ai-think-label">CONTACTING AI ENGINE…</div><div style="font-family:var(--f-mono);font-size:9px;color:var(--smoke);margin-top:2px">Processing sensor context</div></div></div></div>
+        <div id="ai-report" style="display:none">
+          <div class="panel p-4"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div style="flex:1"><div style="display:flex;align-items:center;gap:7px;margin-bottom:6px"><span class="badge badge-crimson" id="ai-sev-badge">CRITICAL</span><span class="badge badge-ghost" id="ai-src-badge">AI</span><span class="badge badge-ghost" id="ai-resp-badge">DISPATCH</span></div><div style="font-family:var(--f-display);font-size:18px;font-weight:600" id="ai-title">—</div></div><div style="text-align:right;flex-shrink:0"><div style="font-family:var(--f-mono);font-size:9px;color:var(--fog)">Confidence</div><div style="font-family:var(--f-mono);font-size:26px;font-weight:600" id="ai-conf">--</div></div></div></div>
+          <div class="ai-section"><div class="ai-section-title">Probable Cause</div><div class="ai-section-body" id="ai-cause"></div></div>
+          <div class="ai-section"><div class="ai-section-title">Recommended Action</div><div class="ai-section-body" id="ai-action"></div></div>
+          <div class="ai-section"><div class="ai-section-title">Related Nodes</div><div id="ai-nodes" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px"></div></div>
+          <div class="ai-section" style="border-left-color:var(--teal)"><div class="ai-section-title">Sensor Evidence</div><div id="ai-evidence" style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:4px;font-family:var(--f-mono);font-size:10px;color:var(--fog)"></div></div>
+          <div class="flex gap-2"><button class="btn btn-outline btn-sm w-full" onclick="saveReport()">Save Report</button><button class="btn btn-ghost btn-sm" onclick="clearAI()">Clear</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PAGE 7: ROADMAP
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="page" id="page-7">
+    <div class="roadmap-page">
+      <div class="roadmap-hero">
+        <div class="eyebrow accent" style="margin-bottom:12px">GUARDIAN MESH · MISSION PLAN</div>
+        <h1 class="d-lg" style="margin-bottom:12px">Product <span class="text-grad">Roadmap</span></h1>
+        <p style="color:var(--fog);font-size:14px;max-width:540px;margin:0 auto;line-height:1.8">From a hackathon prototype to a field-deployable disaster intelligence platform. Here is where we are, and where we are going.</p>
+      </div>
+
+      <!-- Phase Timeline -->
+      <div class="roadmap-phases">
+        <div class="rm-phase"><div class="rm-circle done">V1</div><div class="rm-label">Core Prototype</div><div class="badge badge-emerald rm-badge">CURRENT</div></div>
+        <div class="rm-phase"><div class="rm-circle planned">V2</div><div class="rm-label">Sensor Expansion</div><div class="badge badge-ghost rm-badge">PLANNED</div></div>
+        <div class="rm-phase"><div class="rm-circle planned">V3</div><div class="rm-label">Mesh Growth</div><div class="badge badge-ghost rm-badge">PLANNED</div></div>
+        <div class="rm-phase"><div class="rm-circle planned">V4</div><div class="rm-label">Solar Power</div><div class="badge badge-ghost rm-badge">PLANNED</div></div>
+        <div class="rm-phase"><div class="rm-circle planned">V5</div><div class="rm-label">AI Prediction</div><div class="badge badge-ghost rm-badge">PLANNED</div></div>
+        <div class="rm-phase"><div class="rm-circle planned">V6</div><div class="rm-label">Field Pilots</div><div class="badge badge-ghost rm-badge">PLANNED</div></div>
+        <div class="rm-phase"><div class="rm-circle planned">V7</div><div class="rm-label">Scale &amp; Deploy</div><div class="badge badge-ghost rm-badge">FUTURE</div></div>
+      </div>
+
+      <!-- Milestone Cards -->
+      <div class="milestone-grid">
+        <div class="milestone-card panel" style="border-color:var(--b2)">
+          <div style="position:absolute;top:0;left:0;width:3px;height:100%;background:var(--maroon)"></div>
+          <div class="mc-version badge badge-emerald" style="margin-bottom:10px">V1 · NOW</div>
+          <div class="mc-title">Core Prototype</div>
+          <div class="mc-items">
+            <div class="mc-item">ESP32 + DHT22 + BMP280 + MQ-135</div>
+            <div class="mc-item">Multi-hop ESP-NOW mesh relay</div>
+            <div class="mc-item">FastAPI ground station</div>
+            <div class="mc-item">Web dashboard + WebSocket</div>
+            <div class="mc-item">Gemini AI incident reports</div>
+            <div class="mc-item">Open-Meteo + AQICN + NASA FIRMS</div>
+          </div>
+          <div class="mc-progress"><div class="mc-prog-fill" style="width:100%"></div></div>
+          <div style="font-family:var(--f-mono);font-size:9px;color:var(--emerald);margin-top:6px">100% Complete</div>
+        </div>
+
+        <div class="milestone-card panel">
+          <div style="position:absolute;top:0;left:0;width:3px;height:100%;background:var(--blue)"></div>
+          <div class="mc-version badge badge-blue" style="margin-bottom:10px">V2 · Q3 2026</div>
+          <div class="mc-title">Sensor Expansion</div>
+          <div class="mc-items">
+            <div class="mc-item">UV Index sensor (GUVA-S12SD)</div>
+            <div class="mc-item">Soil moisture monitoring</div>
+            <div class="mc-item">VOC / CO2 sensor (CCS811)</div>
+            <div class="mc-item">Wind direction (compass)</div>
+            <div class="mc-item">Vibration / seismic (MPU-6050)</div>
+            <div class="mc-item">Camera module for visual alerts</div>
+          </div>
+          <div class="mc-progress"><div class="mc-prog-fill" style="width:15%"></div></div>
+          <div style="font-family:var(--f-mono);font-size:9px;color:var(--fog);margin-top:6px">15% — Design Phase</div>
+        </div>
+
+        <div class="milestone-card panel">
+          <div style="position:absolute;top:0;left:0;width:3px;height:100%;background:var(--violet)"></div>
+          <div class="mc-version badge badge-violet" style="margin-bottom:10px">V3 · Q4 2026</div>
+          <div class="mc-title">Mesh Network Growth</div>
+          <div class="mc-items">
+            <div class="mc-item">Scale to 20+ nodes per cluster</div>
+            <div class="mc-item">Multi-cluster bridging</div>
+            <div class="mc-item">GPS-based node positioning</div>
+            <div class="mc-item">Dynamic topology mapping</div>
+            <div class="mc-item">LoRa long-range backup link</div>
+            <div class="mc-item">Encrypted mesh protocol</div>
+          </div>
+          <div class="mc-progress"><div class="mc-prog-fill" style="width:5%"></div></div>
+          <div style="font-family:var(--f-mono);font-size:9px;color:var(--fog);margin-top:6px">5% — Concept</div>
+        </div>
+
+        <div class="milestone-card panel">
+          <div style="position:absolute;top:0;left:0;width:3px;height:100%;background:var(--amber)"></div>
+          <div class="mc-version badge badge-amber" style="margin-bottom:10px">V4 · Q1 2027</div>
+          <div class="mc-title">Solar Optimization</div>
+          <div class="mc-items">
+            <div class="mc-item">Solar + LiPo hybrid power</div>
+            <div class="mc-item">Deep sleep duty cycling</div>
+            <div class="mc-item">Adaptive sampling rate</div>
+            <div class="mc-item">Power telemetry dashboard</div>
+            <div class="mc-item">Energy harvesting from wind</div>
+            <div class="mc-item">5-year field deployment life</div>
+          </div>
+          <div class="mc-progress"><div class="mc-prog-fill" style="width:0%"></div></div>
+          <div style="font-family:var(--f-mono);font-size:9px;color:var(--fog);margin-top:6px">Planned</div>
+        </div>
+      </div>
+
+      <!-- Future Architecture -->
+      <div class="eyebrow" style="margin-bottom:16px;margin-top:32px">V5–V7 FUTURE ARCHITECTURE</div>
+      <div class="arch-future">
+        <div class="panel p-5">
+          <div style="font-size:24px;margin-bottom:10px">🧠</div>
+          <div class="d-sm" style="margin-bottom:8px">V5 — Predictive AI</div>
+          <p style="font-size:12px;color:var(--fog);line-height:1.75">Train a custom ML model on 12+ months of mesh telemetry to predict wildfires, floods, and gas anomalies 2–6 hours before they occur. Integrate weather forecast data as training features.</p>
+        </div>
+        <div class="panel p-5">
+          <div style="font-size:24px;margin-bottom:10px">🏕️</div>
+          <div class="d-sm" style="margin-bottom:8px">V6 — Field Pilots</div>
+          <p style="font-size:12px;color:var(--fog);line-height:1.75">Deploy Guardian Mesh in 3 real-world environments: a forest reserve, a flood-prone river basin, and an urban air quality monitoring zone. Partner with local governments and NGOs.</p>
+        </div>
+        <div class="panel p-5">
+          <div style="font-size:24px;margin-bottom:10px">🌍</div>
+          <div class="d-sm" style="margin-bottom:8px">V7 — Global Scale</div>
+          <p style="font-size:12px;color:var(--fog);line-height:1.75">Open-source hardware design, standardized firmware, cloud-native backend, and a global dashboard aggregating thousands of field stations. Community-deployed environmental intelligence at planetary scale.</p>
+        </div>
+      </div>
+
+      <!-- Bottom CTA -->
+      <div style="text-align:center;margin-top:48px;padding:40px;background:radial-gradient(ellipse 60% 60% at 50% 50%,rgba(139,26,46,.07),transparent)">
+        <div class="eyebrow accent" style="margin-bottom:12px">JOIN THE MISSION</div>
+        <h2 class="d-lg" style="margin-bottom:14px">Open Source &amp; <span class="text-grad">Community-Driven</span></h2>
+        <p style="color:var(--fog);font-size:14px;max-width:500px;margin:0 auto 24px;line-height:1.8">Guardian Mesh is fully open source. Hardware schematics, firmware, and this dashboard are all available under MIT license.</p>
+        <div class="flex gap-3" style="justify-content:center">
+          <button class="btn btn-primary" onclick="switchPage(1)">← Mission Control</button>
+          <button class="btn btn-outline" onclick="switchPage(6)">AI Command Center</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  </main>
+
+  <!-- TERMINAL -->
+  <div id="terminal-wrap">
+    <div id="terminal-panel">
+      <div class="term-header"><div class="flex items-center gap-2"><div class="term-dots"><div class="term-dot" style="background:#EF4444"></div><div class="term-dot" style="background:#F59E0B"></div><div class="term-dot" style="background:#10B981"></div></div><span>guardian-mesh · system.log</span></div><span id="term-ts" style="font-size:9px;color:var(--smoke)">--:--:--</span></div>
+      <div id="term-log"></div>
+    </div>
+    <button id="terminal-toggle" onclick="toggleTerminal()"><span style="color:var(--emerald)">▶</span><span>System Terminal</span><span id="term-unread" style="display:none;padding:1px 5px;background:var(--maroon-lo);color:var(--rose-pale);border-radius:99px;font-size:9px">0</span></button>
   </div>
-</section>
-
-<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     PAGE 6 · HISTORY / EXPORT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-<section class="page" id="page-6">
-  <div class="page-inner">
-    <div class="p6-header">
-      <div>
-        <div class="eyebrow">Data Archive</div>
-        <h2 class="page-h2 sm">History &amp; Export</h2>
-      </div>
-      <div style="display:flex;gap:10px;align-items:center;">
-        <select id="hist-range" onchange="loadHistory(this.value)" data-tooltip="Filter by time range" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#888;padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;outline:none;">
-          <option value="1h">Last 1 Hour</option>
-          <option value="6h">Last 6 Hours</option>
-          <option value="24h" selected>Last 24 Hours</option>
-          <option value="7d">Last 7 Days</option>
-          <option value="30d">Last 30 Days</option>
-        </select>
-        <button class="btn btn-ghost btn-sm" onclick="exportCSV()" data-tooltip="Download telemetry as CSV file">⬇ CSV</button>
-        <button class="btn btn-primary btn-sm" onclick="exportJSON()" data-tooltip="Download telemetry as JSON file">⬇ JSON</button>
-      </div>
-    </div>
-
-    <div class="hist-charts-row">
-      <div class="chart-card" data-tooltip="Temperature history over selected range">
-        <div class="chart-label">Temperature History</div>
-        <div class="chart-wrap"><canvas id="hist-temp"></canvas></div>
-      </div>
-      <div class="chart-card" data-tooltip="Air quality history over selected range">
-        <div class="chart-label">AQI History</div>
-        <div class="chart-wrap"><canvas id="hist-aqi"></canvas></div>
-      </div>
-      <div class="chart-card" data-tooltip="Rainfall history over selected range">
-        <div class="chart-label">Rainfall History</div>
-        <div class="chart-wrap"><canvas id="hist-rain"></canvas></div>
-      </div>
-    </div>
-
-    <div class="hist-table-area">
-      <div class="hist-table-card">
-        <div class="hist-table-hdr">
-          <div style="font-size:10px;color:#555;font-weight:600;letter-spacing:0.10em;text-transform:uppercase;">Recent Records</div>
-          <div id="hist-count" class="mono-label">—</div>
-        </div>
-        <div class="data-row header">
-          <span>Time</span><span>Node</span><span>Temp</span><span>Humidity</span><span>AQI</span><span>Wind</span>
-        </div>
-        <div id="hist-body" class="hist-scroll"></div>
-      </div>
-
-      <div class="hist-stats-card">
-        <div style="font-size:10px;color:#555;font-weight:600;letter-spacing:0.10em;text-transform:uppercase;margin-bottom:16px;">Storage</div>
-        <div class="hist-stat-row"><span>SQLite Records</span><span id="hs-db" class="mono-label">—</span></div>
-        <div class="hist-stat-row"><span>Active Nodes</span><span id="hs-nodes" class="mono-label">—</span></div>
-        <div class="hist-stat-row"><span>AI Reports</span><span id="hs-ai" class="mono-label">—</span></div>
-        <div class="hist-stat-row"><span>JSON History</span><span style="color:#4ADE80;font-size:11px;">✓ Synced</span></div>
-        <div style="margin-top:auto;padding-top:16px;border-top:1px solid rgba(255,255,255,0.06);font-size:11px;color:#444;line-height:1.6;">Data stored persistently in SQLite. Export generates a timestamped file for offline analysis.</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     PAGE 7 · FINALE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-<section class="page" id="page-7">
-  <div class="finale-wrap">
-    <div class="finale-glow"></div>
-    <div class="finale-content">
-      <div style="font-size:56px;margin-bottom:24px;">🌿</div>
-      <div class="eyebrow" style="justify-content:center;display:flex;margin-bottom:12px;">Guardian Mesh · 2025</div>
-      <h2 class="finale-h2">
-        Monitoring the world.<br>
-        <span class="grad-text">Before it needs saving.</span>
-      </h2>
-      <p class="finale-sub">
-        Guardian Mesh demonstrates that world-class environmental monitoring does not require expensive infrastructure. With low-cost hardware, resilient mesh networking, and AI-powered analysis — a few sensor nodes can protect communities, ecosystems, and lives.
-      </p>
-
-      <div class="finale-stats">
-        <div class="fs-card card-tilt"><div class="fs-val">₹800</div><div class="fs-label">Per Node Cost</div></div>
-        <div class="fs-card card-tilt"><div class="fs-val">6 mo</div><div class="fs-label">Battery Life</div></div>
-        <div class="fs-card card-tilt"><div class="fs-val">3 km</div><div class="fs-label">LoRa Range</div></div>
-        <div class="fs-card card-tilt"><div class="fs-val">0</div><div class="fs-label">Cloud Required</div></div>
-      </div>
-
-      <blockquote class="finale-quote">
-        "Thank you for your time and attention. We believe environmental intelligence should be accessible, resilient, and beautiful — and Guardian Mesh is our answer."
-      </blockquote>
-
-      <div class="finale-btns">
-        <button class="btn btn-primary btn-lg" onclick="startStory()" data-tooltip="Watch the story mode again">▶ Replay Story</button>
-        <button class="btn btn-ghost btn-lg" onclick="runDemo()" data-tooltip="Run the live demo sequence">Run Live Demo</button>
-        <button class="btn btn-ghost btn-lg" onclick="exportCSV()" data-tooltip="Download all telemetry as CSV">Download Data</button>
-      </div>
-
-      <div class="finale-tech">GUARDIAN MESH · FastAPI · SQLite · Chart.js · Gemini AI · Claude AI · ESP32 · ESP-NOW</div>
-    </div>
-  </div>
-</section>
-
-</main><!-- /main-content -->
+</div>
 
 <script src="/static/js/app.js"></script>
 </body>

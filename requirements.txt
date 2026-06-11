@@ -4,3 +4,4 @@ aiofiles
 websockets
 httpx
 python-multipart
+python-dotenv
