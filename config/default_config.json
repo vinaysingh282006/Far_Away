@@ -1,0 +1,18 @@
+{
+  "theme": {
+    "accent_color": "#800020",
+    "background_color": "#0B0B0D",
+    "animation_speed": "normal",
+    "blur_intensity": "medium",
+    "card_opacity": 0.8
+  },
+  "dashboard": {
+    "sampling_interval_ms": 5000,
+    "demo_mode": false
+  },
+  "api_keys": {
+    "anthropic_api_key": "",
+    "openweather_api_key": "",
+    "aqicn_api_key": ""
+  }
+}

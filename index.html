@@ -313,33 +313,36 @@
                     </div>
 
                     <!-- Right: Visual architectural block diagram -->
-                    <div class="bg-surface border border-border p-6 rounded-[3px] flex flex-col justify-center h-full panel-glow">
-                        <h4 class="font-bold text-white text-xs mb-4 border-b border-border pb-1.5 font-mono uppercase tracking-wide">ESP32 Relay Chain Architecture</h4>
-                        
-                        <div class="space-y-2 font-mono text-[10px]">
-                            <div class="arch-step flex items-center justify-between p-2.5 rounded-[2px]">
-                                <span class="font-bold text-pink">01. HANDHELD UNIT</span>
-                                <span class="text-slate">OLED + Panic Messages (ESP-NOW)</span>
+                    <div class="bg-surface border border-border p-6 rounded-[3px] flex flex-col justify-between h-full panel-glow relative overflow-hidden">
+                        <div class="space-y-4 flex flex-col h-full justify-between">
+                            <div class="flex justify-between items-center border-b border-border pb-1.5 shrink-0">
+                                <h4 class="font-bold text-white text-xs font-mono uppercase tracking-wide">ESP32 Relay Chain Twin</h4>
+                                <span class="status-pill text-pink">3D SIM ACTIVE</span>
                             </div>
-                            <div class="flex items-center justify-center text-maroon text-[10px] leading-none">▼ ESP-NOW</div>
-                            <div class="arch-step flex items-center justify-between p-2.5 rounded-[2px]">
-                                <span class="font-bold text-pink">02. MAIN SENSOR ESP32</span>
-                                <span class="text-slate">All Sensors + Aggregation</span>
+                            
+                            <!-- Small Canvas for 3D Visual Mesh -->
+                            <div class="w-full flex-grow min-h-[160px] border border-border bg-void/50 rounded-[3px] overflow-hidden relative">
+                                <canvas id="intro-mesh-canvas" class="absolute inset-0 w-full h-full"></canvas>
+                                <div class="absolute bottom-2 left-2 text-[8px] font-mono text-slate bg-void/80 px-1.5 py-0.5 rounded-[2px] z-10">AUTOROTATION DIGITAL NETWORK</div>
                             </div>
-                            <div class="flex items-center justify-center text-maroon text-[10px] leading-none">▼ nRF24</div>
-                            <div class="arch-step flex items-center justify-between p-2.5 rounded-[2px]">
-                                <span class="font-bold text-pink">03. RELAY ESP32</span>
-                                <span class="text-slate">nRF Bridge &rarr; WiFi Uplink</span>
-                            </div>
-                            <div class="flex items-center justify-center text-maroon text-[10px] leading-none">▼ WiFi</div>
-                            <div class="arch-step flex items-center justify-between p-2.5 rounded-[2px]">
-                                <span class="font-bold text-pink">04. GROUND STATION ESP</span>
-                                <span class="text-slate">HTTP POST to Web Server</span>
-                            </div>
-                            <div class="flex items-center justify-center text-maroon text-[10px] leading-none">▼</div>
-                            <div class="arch-step flex items-center justify-between p-2.5 rounded-[2px] border-maroon/40">
-                                <span class="font-bold text-white">05. GUARDIAN DASHBOARD</span>
-                                <span class="text-pink">Live Telemetry + AI + Panic</span>
+                            
+                            <div class="grid grid-cols-2 gap-2 text-[9px] font-mono shrink-0">
+                                <div class="arch-step p-2 rounded-[2px]">
+                                    <div class="font-bold text-pink">01. SENSORS</div>
+                                    <div class="text-[8px] text-slate mt-0.5">ESP-NOW broadcasts</div>
+                                </div>
+                                <div class="arch-step p-2 rounded-[2px]">
+                                    <div class="font-bold text-pink">02. RELAYS</div>
+                                    <div class="text-[8px] text-slate mt-0.5">Multi-hop forwarding</div>
+                                </div>
+                                <div class="arch-step p-2 rounded-[2px]">
+                                    <div class="font-bold text-pink">03. GATEWAY</div>
+                                    <div class="text-[8px] text-slate mt-0.5">WiFi REST backend upload</div>
+                                </div>
+                                <div class="arch-step p-2 rounded-[2px] border-maroon/50 bg-maroon/5">
+                                    <div class="font-bold text-white">04. TERMINAL</div>
+                                    <div class="text-[8px] text-pink mt-0.5">Live graphs & AI reports</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1001,6 +1004,13 @@
         const radarCanvas = document.getElementById("radar-overlay-canvas");
         const radarCtx = radarCanvas ? radarCanvas.getContext("2d") : null;
 
+        // Intro presentation visualizer variables
+        const introCanvas = document.getElementById("intro-mesh-canvas");
+        const iCtx = introCanvas ? introCanvas.getContext("2d") : null;
+        let introRotY = 0;
+        let introRotX = 0.4;
+        let introPulseDots = [];
+
         // Graph instances Page 4
         let chartTempWave = null;
         let chartHumBar = null;
@@ -1026,9 +1036,11 @@
             // Sizing elements
             resize3DCanvas();
             resizeRadarCanvas();
+            resizeIntroCanvas();
             window.addEventListener("resize", () => {
                 resize3DCanvas();
                 resizeRadarCanvas();
+                resizeIntroCanvas();
             });
 
             // Interactive 3D drag handlers
@@ -1050,6 +1062,7 @@
 
             // Start 3D visual renderer loop
             requestAnimationFrame(render3DLoop);
+            requestAnimationFrame(renderIntroLoop);
 
             // Connect Websocket channels
             connectWebSocket();
@@ -1413,6 +1426,154 @@
 
             drawRadarSweep();
             requestAnimationFrame(render3DLoop);
+        }
+
+        function resizeIntroCanvas() {
+            if (!introCanvas) return;
+            introCanvas.width = introCanvas.parentNode.getBoundingClientRect().width;
+            introCanvas.height = introCanvas.parentNode.getBoundingClientRect().height;
+        }
+
+        function project3DIntro(x, y, z) {
+            const cosY = Math.cos(introRotY);
+            const sinY = Math.sin(introRotY);
+            let rx = x * cosY - z * sinY;
+            let rz = x * sinY + z * cosY;
+
+            const cosX = Math.cos(introRotX);
+            const sinX = Math.sin(introRotX);
+            let ry = y * cosX - rz * sinX;
+            rz = y * sinX + rz * cosX;
+
+            const d = 250;
+            const scale = d / (d + rz);
+            const cx = introCanvas.width / 2;
+            const cy = introCanvas.height / 2;
+
+            return {
+                x: rx * scale + cx,
+                y: ry * scale + cy,
+                depth: rz
+            };
+        }
+
+        function renderIntroLoop() {
+            if (!introCanvas || !iCtx) {
+                requestAnimationFrame(renderIntroLoop);
+                return;
+            }
+
+            if (document.getElementById("page-section-1").classList.contains("hidden")) {
+                requestAnimationFrame(renderIntroLoop);
+                return;
+            }
+
+            iCtx.clearRect(0, 0, introCanvas.width, introCanvas.height);
+
+            introRotY += 0.004;
+
+            iCtx.strokeStyle = "#16161A";
+            iCtx.lineWidth = 0.5;
+            const step = 20;
+            for (let x = 0; x < introCanvas.width; x += step) {
+                iCtx.beginPath();
+                iCtx.moveTo(x, 0);
+                iCtx.lineTo(x, introCanvas.height);
+                iCtx.stroke();
+            }
+            for (let y = 0; y < introCanvas.height; y += step) {
+                iCtx.beginPath();
+                iCtx.moveTo(0, y);
+                iCtx.lineTo(introCanvas.width, y);
+                iCtx.stroke();
+            }
+
+            const links = [
+                ["HANDHELD_01", "NODE_B"],
+                ["NODE_A", "NODE_B"],
+                ["NODE_B", "GROUND"],
+                ["NODE_C", "GROUND"],
+                ["NODE_A", "GROUND"]
+            ];
+
+            iCtx.lineWidth = 0.8;
+            links.forEach(([fId, tId]) => {
+                const fNode = nodePoints3D.find(n => n.id === fId);
+                const tNode = nodePoints3D.find(n => n.id === tId);
+                if (!fNode || !tNode) return;
+
+                const fp = project3DIntro(fNode.x * 0.7, fNode.y * 0.7, fNode.z * 0.7);
+                const tp = project3DIntro(tNode.x * 0.7, tNode.y * 0.7, tNode.z * 0.7);
+
+                iCtx.beginPath();
+                iCtx.moveTo(fp.x, fp.y);
+                iCtx.lineTo(tp.x, tp.y);
+                iCtx.strokeStyle = "#29292F";
+                iCtx.stroke();
+            });
+
+            if (Math.random() < 0.025 && introPulseDots.length < 4) {
+                const availablePaths = [
+                    ["HANDHELD_01", "NODE_B", "GROUND"],
+                    ["NODE_A", "NODE_B", "GROUND"],
+                    ["NODE_C", "GROUND"]
+                ];
+                const selectedPath = availablePaths[Math.floor(Math.random() * availablePaths.length)];
+                introPulseDots.push({
+                    path: selectedPath,
+                    startTime: Date.now(),
+                    duration: 2500
+                });
+            }
+
+            const now = Date.now();
+            introPulseDots = introPulseDots.filter(pulse => {
+                const elapsed = now - pulse.startTime;
+                const progress = elapsed / pulse.duration;
+                if (progress >= 1) return false;
+
+                const hops = pulse.path;
+                const segments = hops.length - 1;
+                const segProgress = progress * segments;
+                const index = Math.floor(segProgress);
+                const localProgress = segProgress - index;
+
+                const fromNode = nodePoints3D.find(n => n.id === hops[index]);
+                const toNode = nodePoints3D.find(n => n.id === hops[index + 1]);
+                if (!fromNode || !toNode) return false;
+
+                const px = (fromNode.x + localProgress * (toNode.x - fromNode.x)) * 0.7;
+                const py = (fromNode.y + localProgress * (toNode.y - fromNode.y)) * 0.7;
+                const pz = (fromNode.z + localProgress * (toNode.z - fromNode.z)) * 0.7;
+
+                const p = project3DIntro(px, py, pz);
+
+                iCtx.beginPath();
+                iCtx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+                iCtx.fillStyle = "#F5C2C9";
+                iCtx.shadowColor = "#F5C2C9";
+                iCtx.shadowBlur = 4;
+                iCtx.fill();
+                iCtx.shadowBlur = 0;
+                return true;
+            });
+
+            nodePoints3D.forEach(node => {
+                const p = project3DIntro(node.x * 0.7, node.y * 0.7, node.z * 0.7);
+
+                iCtx.beginPath();
+                iCtx.arc(p.x, p.y, node.size * 0.65, 0, Math.PI * 2);
+                iCtx.fillStyle = node.id === "GROUND" ? "#800020" : "#F5C2C9";
+                iCtx.shadowColor = node.id === "GROUND" ? "#800020" : "#F5C2C9";
+                iCtx.shadowBlur = 4;
+                iCtx.fill();
+                iCtx.shadowBlur = 0;
+                iCtx.strokeStyle = "#0B0B0D";
+                iCtx.lineWidth = 1;
+                iCtx.stroke();
+            });
+
+            requestAnimationFrame(renderIntroLoop);
         }
 
         function triggerSimulationPulse(relayPath, isAlert = false) {

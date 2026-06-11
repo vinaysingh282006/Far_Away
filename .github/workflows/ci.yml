@@ -1,0 +1,123 @@
+name: Guardian Mesh CI
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  quality:
+    name: Code Quality & Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest httpx pytest-cov flake8 black isort
+
+      - name: Check formatting with black
+        run: black --check --line-length 100 .
+        continue-on-error: true
+
+      - name: Check import order with isort
+        run: isort --check-only --diff .
+        continue-on-error: true
+
+      - name: Lint with flake8
+        run: |
+          flake8 . \
+            --max-line-length=100 \
+            --exclude=.git,__pycache__,.venv,venv,static,templates,assets \
+            --ignore=E501,W503,E302,E303
+        continue-on-error: true
+
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ -v \
+            --tb=short \
+            --cov=. \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-omit="tests/*,static/*,assets/*,templates/*" \
+        env:
+          PYTHONPATH: .
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: coverage.xml
+          flags: unittests
+          fail_ci_if_error: false
+
+  verify-structure:
+    name: Project Structure Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify required files exist
+        run: |
+          required_files=(
+            "main.py"
+            "requirements.txt"
+            "config/config.py"
+            "config/constants.py"
+            "config/default_config.json"
+            "api/routes.py"
+            "api/websocket.py"
+            "database/database.py"
+            "database/seed.py"
+            "services/ai_service.py"
+            "services/report_service.py"
+            "static/css/styles.css"
+            "static/js/app.js"
+            "templates/index.html"
+            "tests/test_backend.py"
+            "docs/README.md"
+            "docs/API_DOCUMENTATION.md"
+          )
+
+          missing=()
+          for f in "${required_files[@]}"; do
+            if [ ! -f "$f" ]; then
+              missing+=("$f")
+            fi
+          done
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "ERROR: Missing required files:"
+            for f in "${missing[@]}"; do
+              echo "  - $f"
+            done
+            exit 1
+          fi
+
+          echo "✅ All required files present"
+
+      - name: Check for hardcoded secrets
+        run: |
+          # Fail if any API key string appears in frontend/template code
+          if grep -r "sk-ant-" templates/ static/ 2>/dev/null; then
+            echo "ERROR: Hardcoded Anthropic API key found in frontend!"
+            exit 1
+          fi
+          if grep -r "AIza" templates/ static/ 2>/dev/null; then
+            echo "ERROR: Hardcoded Google API key found in frontend!"
+            exit 1
+          fi
+          echo "✅ No hardcoded secrets found"

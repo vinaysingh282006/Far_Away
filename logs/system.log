@@ -1,0 +1,87 @@
+2026-06-09 22:58:29,202  INFO      === Guardian Mesh ===
+2026-06-09 22:58:29,203  INFO        ai_gemini              — missing (fallback active)
+2026-06-09 22:58:29,203  INFO        ai_claude              — missing (fallback active)
+2026-06-09 22:58:29,203  INFO        weather                — missing (fallback active)
+2026-06-09 22:58:29,203  INFO        aqi                    — missing (fallback active)
+2026-06-09 22:58:29,203  INFO        nasa_firms             — missing (fallback active)
+2026-06-09 22:58:29,203  INFO        firebase               — missing (fallback active)
+2026-06-09 22:58:29,203  INFO        mapbox                 — missing (fallback active)
+2026-06-09 22:58:40,342  INFO      === Guardian Mesh ===
+2026-06-09 22:58:40,345  INFO        ai_gemini              — missing (fallback active)
+2026-06-09 22:58:40,345  INFO        ai_claude              — missing (fallback active)
+2026-06-09 22:58:40,345  INFO        weather                — missing (fallback active)
+2026-06-09 22:58:40,345  INFO        aqi                    — missing (fallback active)
+2026-06-09 22:58:40,346  INFO        nasa_firms             — missing (fallback active)
+2026-06-09 22:58:40,346  INFO        firebase               — missing (fallback active)
+2026-06-09 22:58:40,346  INFO        mapbox                 — missing (fallback active)
+2026-06-09 22:58:41,439  INFO      === Guardian Mesh ===
+2026-06-09 22:58:41,439  INFO        ai_gemini              — missing (fallback active)
+2026-06-09 22:58:41,440  INFO        ai_claude              — missing (fallback active)
+2026-06-09 22:58:41,440  INFO        weather                — missing (fallback active)
+2026-06-09 22:58:41,440  INFO        aqi                    — missing (fallback active)
+2026-06-09 22:58:41,440  INFO        nasa_firms             — missing (fallback active)
+2026-06-09 22:58:41,440  INFO        firebase               — missing (fallback active)
+2026-06-09 22:58:41,440  INFO        mapbox                 — missing (fallback active)
+2026-06-09 23:03:44,919  INFO      === Guardian Mesh ===
+2026-06-09 23:03:44,919  INFO        ai_gemini              — missing (fallback active)
+2026-06-09 23:03:44,919  INFO        ai_claude              — missing (fallback active)
+2026-06-09 23:03:44,920  INFO        weather                — missing (fallback active)
+2026-06-09 23:03:44,920  INFO        aqi                    — missing (fallback active)
+2026-06-09 23:03:44,920  INFO        nasa_firms             — missing (fallback active)
+2026-06-09 23:03:44,920  INFO        firebase               — missing (fallback active)
+2026-06-09 23:03:44,920  INFO        mapbox                 — missing (fallback active)
+2026-06-09 23:03:45,980  INFO      === Guardian Mesh ===
+2026-06-09 23:03:45,981  INFO        ai_gemini              — missing (fallback active)
+2026-06-09 23:03:45,981  INFO        ai_claude              — missing (fallback active)
+2026-06-09 23:03:45,981  INFO        weather                — missing (fallback active)
+2026-06-09 23:03:45,981  INFO        aqi                    — missing (fallback active)
+2026-06-09 23:03:45,981  INFO        nasa_firms             — missing (fallback active)
+2026-06-09 23:03:45,981  INFO        firebase               — missing (fallback active)
+2026-06-09 23:03:45,981  INFO        mapbox                 — missing (fallback active)
+2026-06-09 23:05:32,158  INFO      AI report generated via mock fallback
+2026-06-09 23:05:32,170  INFO      Demo sequence completed
+2026-06-09 23:05:34,707  INFO      AI report generated via mock fallback
+2026-06-09 23:05:34,722  INFO      Demo sequence completed
+2026-06-09 23:05:47,933  INFO      AI report generated via mock fallback
+2026-06-09 23:05:47,942  INFO      Demo sequence completed
+2026-06-10 22:26:24,139  INFO      === Guardian Mesh ===
+2026-06-10 22:26:24,140  INFO        ai_gemini              — missing (fallback active)
+2026-06-10 22:26:24,140  INFO        ai_claude              — missing (fallback active)
+2026-06-10 22:26:24,140  INFO        weather                — missing (fallback active)
+2026-06-10 22:26:24,142  INFO        aqi                    — missing (fallback active)
+2026-06-10 22:26:24,142  INFO        nasa_firms             — missing (fallback active)
+2026-06-10 22:26:24,142  INFO        firebase               — missing (fallback active)
+2026-06-10 22:26:24,142  INFO        mapbox                 — missing (fallback active)
+2026-06-10 22:26:26,669  INFO      === Guardian Mesh ===
+2026-06-10 22:26:26,669  INFO        ai_gemini              — missing (fallback active)
+2026-06-10 22:26:26,669  INFO        ai_claude              — missing (fallback active)
+2026-06-10 22:26:26,670  INFO        weather                — missing (fallback active)
+2026-06-10 22:26:26,670  INFO        aqi                    — missing (fallback active)
+2026-06-10 22:26:26,671  INFO        nasa_firms             — missing (fallback active)
+2026-06-10 22:26:26,671  INFO        firebase               — missing (fallback active)
+2026-06-10 22:26:26,671  INFO        mapbox                 — missing (fallback active)
+2026-06-11 09:58:29,849  INFO      === Guardian Mesh ===
+2026-06-11 09:58:29,850  INFO        ai_gemini              — missing (fallback active)
+2026-06-11 09:58:29,850  INFO        ai_claude              — missing (fallback active)
+2026-06-11 09:58:29,850  INFO        weather                — missing (fallback active)
+2026-06-11 09:58:29,850  INFO        aqi                    — missing (fallback active)
+2026-06-11 09:58:29,850  INFO        nasa_firms             — missing (fallback active)
+2026-06-11 09:58:29,850  INFO        firebase               — missing (fallback active)
+2026-06-11 09:58:29,851  INFO        mapbox                 — missing (fallback active)
+2026-06-11 09:58:30,915  INFO      === Guardian Mesh ===
+2026-06-11 09:58:30,916  INFO        ai_gemini              — missing (fallback active)
+2026-06-11 09:58:30,916  INFO        ai_claude              — missing (fallback active)
+2026-06-11 09:58:30,916  INFO        weather                — missing (fallback active)
+2026-06-11 09:58:30,916  INFO        aqi                    — missing (fallback active)
+2026-06-11 09:58:30,916  INFO        nasa_firms             — missing (fallback active)
+2026-06-11 09:58:30,916  INFO        firebase               — missing (fallback active)
+2026-06-11 09:58:30,916  INFO        mapbox                 — missing (fallback active)
+2026-06-11 09:59:27,825  INFO      AI report generated via mock fallback
+2026-06-11 10:01:20,210  INFO      AI report generated via mock fallback
+2026-06-11 10:01:20,218  INFO      Demo sequence completed
+2026-06-11 10:01:32,639  INFO      AI report generated via mock fallback
+2026-06-11 10:01:32,649  INFO      Demo sequence completed
+2026-06-11 10:01:33,093  INFO      AI report generated via mock fallback
+2026-06-11 10:01:33,103  INFO      Demo sequence completed
+2026-06-11 10:01:34,371  INFO      AI report generated via mock fallback
+2026-06-11 10:01:34,386  INFO      Demo sequence completed
