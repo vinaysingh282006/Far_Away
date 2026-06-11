@@ -29,6 +29,7 @@ app.include_router(api_router)
 # Mount Static Files
 os.makedirs("static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+os.makedirs("assets", exist_ok=True)
 app.mount("/assets", StaticFiles(directory="assets"), name="assets")
 
 @app.get("/")
