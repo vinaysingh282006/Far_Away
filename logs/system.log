@@ -167,3 +167,28 @@
 2026-06-11 15:15:00,649  INFO        firebase               — missing (fallback active)
 2026-06-11 15:15:00,649  INFO        mapbox                 — missing (fallback active)
 2026-06-11 15:17:01,607  INFO      AI report generated via mock fallback
+2026-06-11 20:24:35,551  INFO      === Guardian Mesh ===
+2026-06-11 20:24:35,552  INFO        ai_gemini              — missing (fallback active)
+2026-06-11 20:24:35,552  INFO        ai_claude              — missing (fallback active)
+2026-06-11 20:24:35,552  INFO        weather                — missing (fallback active)
+2026-06-11 20:24:35,553  INFO        aqi                    — missing (fallback active)
+2026-06-11 20:24:35,553  INFO        nasa_firms             — missing (fallback active)
+2026-06-11 20:24:35,553  INFO        firebase               — missing (fallback active)
+2026-06-11 20:24:35,553  INFO        mapbox                 — missing (fallback active)
+2026-06-11 20:25:57,921  INFO      AI report generated via mock fallback
+2026-06-11 20:25:57,933  INFO      Demo sequence completed
+2026-06-11 20:26:02,166  INFO      AI report generated via mock fallback
+2026-06-12 09:54:13,001  INFO      === Guardian Mesh ===
+2026-06-12 09:54:13,002  INFO        ai_gemini              — missing (fallback active)
+2026-06-12 09:54:13,002  INFO        ai_claude              — missing (fallback active)
+2026-06-12 09:54:13,002  INFO        weather                — missing (fallback active)
+2026-06-12 09:54:13,003  INFO        aqi                    — missing (fallback active)
+2026-06-12 09:54:13,003  INFO        nasa_firms             — missing (fallback active)
+2026-06-12 09:54:13,003  INFO        firebase               — missing (fallback active)
+2026-06-12 09:54:13,003  INFO        mapbox                 — missing (fallback active)
+2026-06-12 09:56:02,805  INFO      AI report generated via mock fallback
+2026-06-12 09:56:02,816  INFO      Demo sequence completed
+2026-06-12 09:56:07,038  INFO      AI report generated via mock fallback
+2026-06-12 10:03:03,826  INFO      AI report generated via mock fallback
+2026-06-12 10:03:03,847  INFO      Demo sequence completed
+2026-06-12 10:03:08,091  INFO      AI report generated via mock fallback
