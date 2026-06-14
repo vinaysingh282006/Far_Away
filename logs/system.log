@@ -192,3 +192,121 @@
 2026-06-12 10:03:03,826  INFO      AI report generated via mock fallback
 2026-06-12 10:03:03,847  INFO      Demo sequence completed
 2026-06-12 10:03:08,091  INFO      AI report generated via mock fallback
+2026-06-14 21:55:09,571  INFO      === Guardian Mesh ===
+2026-06-14 21:55:09,573  INFO        ai_gemini              — missing (fallback active)
+2026-06-14 21:55:09,573  INFO        ai_claude              — missing (fallback active)
+2026-06-14 21:55:09,573  INFO        weather                — missing (fallback active)
+2026-06-14 21:55:09,573  INFO        aqi                    — missing (fallback active)
+2026-06-14 21:55:09,573  INFO        nasa_firms             — missing (fallback active)
+2026-06-14 21:55:09,573  INFO        firebase               — missing (fallback active)
+2026-06-14 21:55:09,573  INFO        mapbox                 — missing (fallback active)
+2026-06-14 21:55:09,924  ERROR     Error in receive_data: table nodes has no column named health_score
+2026-06-14 21:55:10,155  ERROR     Error in receive_data: table nodes has no column named health_score
+2026-06-14 21:55:10,166  ERROR     Error in receive_data: table nodes has no column named health_score
+2026-06-14 21:55:10,943  WARNING   Fire simulation triggered via dashboard
+2026-06-14 21:55:50,970  INFO      === Guardian Mesh ===
+2026-06-14 21:55:50,971  INFO        ai_gemini              — missing (fallback active)
+2026-06-14 21:55:50,971  INFO        ai_claude              — missing (fallback active)
+2026-06-14 21:55:50,972  INFO        weather                — missing (fallback active)
+2026-06-14 21:55:50,972  INFO        aqi                    — missing (fallback active)
+2026-06-14 21:55:50,972  INFO        nasa_firms             — missing (fallback active)
+2026-06-14 21:55:50,972  INFO        firebase               — missing (fallback active)
+2026-06-14 21:55:50,972  INFO        mapbox                 — missing (fallback active)
+2026-06-14 21:55:52,044  WARNING   Fire simulation triggered via dashboard
+2026-06-14 21:56:08,579  INFO      === Guardian Mesh ===
+2026-06-14 21:56:08,580  INFO        ai_gemini              — missing (fallback active)
+2026-06-14 21:56:08,580  INFO        ai_claude              — missing (fallback active)
+2026-06-14 21:56:08,580  INFO        weather                — missing (fallback active)
+2026-06-14 21:56:08,580  INFO        aqi                    — missing (fallback active)
+2026-06-14 21:56:08,580  INFO        nasa_firms             — missing (fallback active)
+2026-06-14 21:56:08,580  INFO        firebase               — missing (fallback active)
+2026-06-14 21:56:08,580  INFO        mapbox                 — missing (fallback active)
+2026-06-14 21:56:09,029  WARNING   Fire simulation triggered via dashboard
+2026-06-14 21:56:18,173  INFO      === Guardian Mesh ===
+2026-06-14 21:56:18,174  INFO        ai_gemini              — missing (fallback active)
+2026-06-14 21:56:18,174  INFO        ai_claude              — missing (fallback active)
+2026-06-14 21:56:18,174  INFO        weather                — missing (fallback active)
+2026-06-14 21:56:18,174  INFO        aqi                    — missing (fallback active)
+2026-06-14 21:56:18,174  INFO        nasa_firms             — missing (fallback active)
+2026-06-14 21:56:18,174  INFO        firebase               — missing (fallback active)
+2026-06-14 21:56:18,174  INFO        mapbox                 — missing (fallback active)
+2026-06-14 21:56:18,610  WARNING   Fire simulation triggered via dashboard
+2026-06-14 21:57:07,346  INFO      === Guardian Mesh ===
+2026-06-14 21:57:07,346  INFO        ai_gemini              — missing (fallback active)
+2026-06-14 21:57:07,346  INFO        ai_claude              — missing (fallback active)
+2026-06-14 21:57:07,347  INFO        weather                — missing (fallback active)
+2026-06-14 21:57:07,347  INFO        aqi                    — missing (fallback active)
+2026-06-14 21:57:07,347  INFO        nasa_firms             — missing (fallback active)
+2026-06-14 21:57:07,347  INFO        firebase               — missing (fallback active)
+2026-06-14 21:57:07,347  INFO        mapbox                 — missing (fallback active)
+2026-06-14 21:57:07,786  WARNING   Fire simulation triggered via dashboard
+2026-06-14 21:57:22,103  INFO      === Guardian Mesh ===
+2026-06-14 21:57:22,104  INFO        ai_gemini              — missing (fallback active)
+2026-06-14 21:57:22,104  INFO        ai_claude              — missing (fallback active)
+2026-06-14 21:57:22,104  INFO        weather                — missing (fallback active)
+2026-06-14 21:57:22,104  INFO        aqi                    — missing (fallback active)
+2026-06-14 21:57:22,104  INFO        nasa_firms             — missing (fallback active)
+2026-06-14 21:57:22,104  INFO        firebase               — missing (fallback active)
+2026-06-14 21:57:22,104  INFO        mapbox                 — missing (fallback active)
+2026-06-14 22:26:08,853  INFO      === Guardian Mesh ===
+2026-06-14 22:26:08,854  INFO        ai_gemini              — missing (fallback active)
+2026-06-14 22:26:08,854  INFO        ai_claude              — missing (fallback active)
+2026-06-14 22:26:08,855  INFO        weather                — missing (fallback active)
+2026-06-14 22:26:08,855  INFO        aqi                    — missing (fallback active)
+2026-06-14 22:26:08,855  INFO        nasa_firms             — missing (fallback active)
+2026-06-14 22:26:08,855  INFO        firebase               — missing (fallback active)
+2026-06-14 22:26:08,855  INFO        mapbox                 — missing (fallback active)
+2026-06-14 22:26:09,285  WARNING   Fire simulation triggered via dashboard
+2026-06-14 22:26:13,936  INFO      === Guardian Mesh ===
+2026-06-14 22:26:13,937  INFO        ai_gemini              — missing (fallback active)
+2026-06-14 22:26:13,937  INFO        ai_claude              — missing (fallback active)
+2026-06-14 22:26:13,937  INFO        weather                — missing (fallback active)
+2026-06-14 22:26:13,937  INFO        aqi                    — missing (fallback active)
+2026-06-14 22:26:13,937  INFO        nasa_firms             — missing (fallback active)
+2026-06-14 22:26:13,937  INFO        firebase               — missing (fallback active)
+2026-06-14 22:26:13,937  INFO        mapbox                 — missing (fallback active)
+2026-06-14 22:31:34,291  INFO      === Guardian Mesh ===
+2026-06-14 22:31:34,291  INFO        ai_gemini              — missing (fallback active)
+2026-06-14 22:31:34,292  INFO        ai_claude              — missing (fallback active)
+2026-06-14 22:31:34,292  INFO        weather                — missing (fallback active)
+2026-06-14 22:31:34,292  INFO        aqi                    — missing (fallback active)
+2026-06-14 22:31:34,292  INFO        nasa_firms             — missing (fallback active)
+2026-06-14 22:31:34,292  INFO        firebase               — missing (fallback active)
+2026-06-14 22:31:34,292  INFO        mapbox                 — missing (fallback active)
+2026-06-14 22:31:34,707  WARNING   Fire simulation triggered via dashboard
+2026-06-14 22:32:59,535  INFO      === Guardian Mesh ===
+2026-06-14 22:32:59,535  INFO        ai_gemini              — missing (fallback active)
+2026-06-14 22:32:59,536  INFO        ai_claude              — missing (fallback active)
+2026-06-14 22:32:59,536  INFO        weather                — missing (fallback active)
+2026-06-14 22:32:59,537  INFO        aqi                    — missing (fallback active)
+2026-06-14 22:32:59,537  INFO        nasa_firms             — missing (fallback active)
+2026-06-14 22:32:59,537  INFO        firebase               — missing (fallback active)
+2026-06-14 22:32:59,537  INFO        mapbox                 — missing (fallback active)
+2026-06-14 22:34:28,302  INFO      === Guardian Mesh ===
+2026-06-14 22:34:28,302  INFO        ai_gemini              — missing (fallback active)
+2026-06-14 22:34:28,303  INFO        ai_claude              — missing (fallback active)
+2026-06-14 22:34:28,303  INFO        weather                — missing (fallback active)
+2026-06-14 22:34:28,303  INFO        aqi                    — missing (fallback active)
+2026-06-14 22:34:28,303  INFO        nasa_firms             — missing (fallback active)
+2026-06-14 22:34:28,303  INFO        firebase               — missing (fallback active)
+2026-06-14 22:34:28,303  INFO        mapbox                 — missing (fallback active)
+2026-06-14 22:34:34,856  INFO      === Guardian Mesh ===
+2026-06-14 22:34:34,857  INFO        ai_gemini              — missing (fallback active)
+2026-06-14 22:34:34,857  INFO        ai_claude              — missing (fallback active)
+2026-06-14 22:34:34,857  INFO        weather                — missing (fallback active)
+2026-06-14 22:34:34,857  INFO        aqi                    — missing (fallback active)
+2026-06-14 22:34:34,857  INFO        nasa_firms             — missing (fallback active)
+2026-06-14 22:34:34,857  INFO        firebase               — missing (fallback active)
+2026-06-14 22:34:34,857  INFO        mapbox                 — missing (fallback active)
+2026-06-14 22:45:47,655  INFO      === Guardian Mesh ===
+2026-06-14 22:45:47,655  INFO        ai_gemini              — missing (fallback active)
+2026-06-14 22:45:47,655  INFO        ai_claude              — missing (fallback active)
+2026-06-14 22:45:47,655  INFO        weather                — missing (fallback active)
+2026-06-14 22:45:47,656  INFO        aqi                    — missing (fallback active)
+2026-06-14 22:45:47,656  INFO        nasa_firms             — missing (fallback active)
+2026-06-14 22:45:47,656  INFO        firebase               — missing (fallback active)
+2026-06-14 22:45:47,656  INFO        mapbox                 — missing (fallback active)
+2026-06-14 22:59:36,730  INFO      AI report generated via mock fallback
+2026-06-14 23:01:01,793  INFO      AI report generated via mock fallback
+2026-06-14 23:01:01,804  INFO      Demo sequence completed
+2026-06-14 23:01:06,026  INFO      AI report generated via mock fallback

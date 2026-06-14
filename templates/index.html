@@ -44,6 +44,27 @@
 <!-- AMBIENT -->
 <canvas id="ambient-canvas"></canvas>
 
+<!-- TOASTS -->
+<div id="toast-container"></div>
+
+<!-- GLOBAL EMERGENCY OVERLAY -->
+<div id="global-emergency-overlay" class="emergency-overlay">
+  <div class="emergency-modal panel glow-crimson">
+    <div class="emergency-header">
+      <div class="emergency-alert-icon">⚠️</div>
+      <div class="emergency-title">CRITICAL MESH EMERGENCY</div>
+    </div>
+    <div class="emergency-body">
+      <div class="emergency-device" id="em-device">—</div>
+      <div class="emergency-msg" id="em-msg">—</div>
+      <div class="emergency-meta" id="em-meta">—</div>
+    </div>
+    <div class="emergency-actions">
+      <button class="btn btn-primary btn-sm w-full" onclick="ackEmergencyOverlay()">ACKNOWLEDGE & DISMISS</button>
+    </div>
+  </div>
+</div>
+
 <!-- ALERTS -->
 <div id="alert-overlay"></div>
 <div id="panic-banner">
@@ -110,6 +131,7 @@
         <div class="sys-strip">
           <div class="ss-item"><div class="ss-dot" style="background:var(--emerald);box-shadow:0 0 6px var(--emerald)"></div>Mesh Online</div>
           <div class="ss-item"><div class="ss-dot" style="background:var(--emerald);box-shadow:0 0 6px var(--emerald)"></div>AI Active</div>
+          <div class="ss-item" id="sys-handheld-status"><div class="ss-dot" id="sys-handheld-dot" style="background:var(--smoke)"></div>Handheld: Offline</div>
           <div class="ss-item"><div class="ss-dot" style="background:var(--amber);box-shadow:0 0 6px var(--amber)"></div>API: Mock</div>
           <div class="ss-item"><div class="ss-dot" style="background:var(--fog)"></div>Sat: Pending</div>
         </div>
@@ -645,7 +667,7 @@
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px">
         <div class="panel p-4 text-center"><div class="eyebrow" style="margin-bottom:5px">Records</div><div class="d-md" id="hs-records">--</div></div>
         <div class="panel p-4 text-center"><div class="eyebrow" style="margin-bottom:5px">Nodes</div><div class="d-md" id="hs-nodes">--</div></div>
-        <div class="panel p-4 text-center"><div class="eyebrow" style="margin-bottom:5px">Alerts</div><div class="d-md text-crimson" id="hs-alerts">--</div></div>
+        <div class="panel p-4 text-center" id="hist-alerts-card"><div class="eyebrow" style="margin-bottom:5px">Alerts</div><div class="d-md text-crimson" id="hs-alerts">--</div></div>
         <div class="panel p-4 text-center"><div class="eyebrow" style="margin-bottom:5px">AI Reports</div><div class="d-md" style="color:var(--rose-pale)" id="hs-ai">--</div></div>
       </div>
       <div class="htab-strip">
@@ -819,6 +841,85 @@
       <div id="term-log"></div>
     </div>
     <button id="terminal-toggle" onclick="toggleTerminal()"><span style="color:var(--emerald)">▶</span><span>System Terminal</span><span id="term-unread" style="display:none;padding:1px 5px;background:var(--maroon-lo);color:var(--rose-pale);border-radius:99px;font-size:9px">0</span></button>
+  </div>
+</div>
+
+<!-- UNIVERSAL OVERLAY CONTAINER -->
+<div id="universal-overlay-container"></div>
+
+<!-- HANDHELD SIMULATOR WIDGET -->
+<div id="handheld-sim-toggle" onclick="toggleHandheldSimulator()">
+  <span class="sim-icon">📱</span>
+  <span class="sim-text">Handheld Simulator</span>
+</div>
+
+<div id="handheld-simulator" class="panel">
+  <div class="sim-header">
+    <span class="sim-title">📟 ESP32 Handheld Sentinel</span>
+    <button class="sim-close" onclick="toggleHandheldSimulator()">×</button>
+  </div>
+  <div class="sim-body">
+    <!-- LCD Display -->
+    <div class="sim-lcd">
+      <div class="lcd-row"><span class="lcd-lbl">SYS:</span> <span class="lcd-val text-emerald" id="lcd-sys-status">ACTIVE</span></div>
+      <div class="lcd-row"><span class="lcd-lbl">NET:</span> <span class="lcd-val" id="lcd-net-status">ESP-NOW LINK</span></div>
+      <div class="lcd-row"><span class="lcd-lbl">BAT:</span> <span class="lcd-val">98% (4.12V)</span></div>
+      <div class="lcd-row"><span class="lcd-lbl">LOG:</span> <span class="lcd-val text-amber" id="lcd-log-msg">READY TO SEND</span></div>
+    </div>
+
+    <!-- Quick Event Presets -->
+    <div class="sim-section">
+      <label class="sim-label">EVENT PRESETS</label>
+      <select id="sim-preset" onchange="applySimPreset(this.value)">
+        <option value="">-- Select Event Preset --</option>
+        <option value="msg-sel">👉 Message Selected</option>
+        <option value="msg-sent">📤 Message Sent</option>
+        <option value="emergency">🚨 Emergency Alert</option>
+        <option value="status-up">📊 Status Update</option>
+        <option value="wifi-on">📶 WiFi Connected</option>
+        <option value="wifi-off">📴 WiFi Disconnected</option>
+        <option value="net-on">🔗 Backend Connected</option>
+        <option value="net-err">❌ Backend Error</option>
+        <option value="hh-on">🟢 Handheld Online</option>
+        <option value="hh-off">🔴 Handheld Offline</option>
+        <option value="check">🔧 System Check</option>
+        <option value="bat-low">🔋 Battery Low</option>
+        <option value="clear">✅ All Clear</option>
+      </select>
+    </div>
+
+    <!-- Message Configurator -->
+    <div class="sim-section">
+      <label class="sim-label">CUSTOM MESSAGE</label>
+      <input type="text" id="sim-msg" placeholder="Type message here..." value="Patrol checkpoint alpha reached">
+    </div>
+
+    <div class="sim-section-row">
+      <div class="sim-section">
+        <label class="sim-label">PRIORITY</label>
+        <select id="sim-priority">
+          <option value="NORMAL" selected>NORMAL</option>
+          <option value="HIGH">HIGH</option>
+          <option value="CRITICAL">CRITICAL</option>
+        </select>
+      </div>
+      <div class="sim-section">
+        <label class="sim-label">DEVICE ID</label>
+        <input type="text" id="sim-device" value="HANDHELD_01">
+      </div>
+    </div>
+
+    <div class="sim-section">
+      <label class="sim-label" style="display:flex;justify-content:space-between">
+        <span>SIGNAL STRENGTH (RSSI)</span>
+        <span id="sim-rssi-lbl">-50 dBm</span>
+      </label>
+      <input type="range" id="sim-rssi" min="-95" max="-30" value="-50" oninput="document.getElementById('sim-rssi-lbl').textContent = this.value + ' dBm'">
+    </div>
+
+    <button class="btn btn-primary w-full sim-send-btn" onclick="sendSimulatedHandheldMessage()">
+      ⚡ TRANSMIT EVENT
+    </button>
   </div>
 </div>
 

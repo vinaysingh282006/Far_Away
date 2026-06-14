@@ -337,5 +337,40 @@ class TestCSVExport:
                 assert field in rows[0], f"Field {field} missing from export data"
 
 
+# ── Handheld Message Tests ──────────────────────────────────────────
+
+class TestHandheldMessages:
+    def test_post_handheld_message(self):
+        payload = {
+            "device_id": "HANDHELD_01",
+            "message": "Fire Alert Test",
+            "priority": "HIGH",
+            "timestamp": "auto-generated",
+            "wifi_rssi": -48,
+            "uptime_ms": 123456,
+            "status": "sent"
+        }
+        r = client.post("/message", json=payload)
+        data = assert_success(r)
+        assert data["data"]["device_id"] == "HANDHELD_01"
+        assert data["data"]["message"] == "Fire Alert Test"
+        assert data["data"]["priority"] == "HIGH"
+
+    def test_get_latest_message(self):
+        # Trigger POST first
+        client.post("/message", json={
+            "device_id": "HANDHELD_02",
+            "message": "Critical Alert Test",
+            "priority": "CRITICAL",
+            "wifi_rssi": -45,
+            "uptime_ms": 7890
+        })
+        r = client.get("/latest_message")
+        data = assert_success(r)
+        assert data["data"]["device_id"] == "HANDHELD_02"
+        assert data["data"]["message"] == "Critical Alert Test"
+        assert data["data"]["priority"] == "CRITICAL"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])

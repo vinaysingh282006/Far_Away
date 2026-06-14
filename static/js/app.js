@@ -48,6 +48,7 @@ const SFX={
   aiDone: ()=>{ _tone(523,'triangle',.18,.07); setTimeout(()=>_tone(659,'triangle',.18,.07),190); },
   nodeOn: ()=>_tone(440,'sine',.2,.06),
   success:()=>{ _tone(659,'sine',.14,.08); setTimeout(()=>_tone(784,'sine',.2,.1),170); },
+  chime:  ()=>{ try{ _tone(523.25,'sine',.1,.04); setTimeout(()=>_tone(659.25,'sine',.12,.04),90); setTimeout(()=>_tone(783.99,'sine',.22,.05),180); }catch{} }
 };
 
 // ── TERMINAL ──────────────────────────────────────────────────────
@@ -133,7 +134,11 @@ function switchPage(n){
   if(n===2) initWebData();
   if(n===3) refreshSensorPage();
   if(n===4) initTwinSense();
-  if(n===5) loadHistoryPage();
+  if(n===5) {
+    loadHistoryPage();
+    const ac=$('hist-alerts-card');
+    if(ac) ac.classList.remove('highlight-alert');
+  }
   SFX.hover();
 }
 
@@ -268,6 +273,7 @@ function handleWS(msg){
     case 'panic':         handlePanic(msg.data); break;
     case 'packet_update': handlePacket(msg.packet); break;
     case 'ai_report':     handleAIReport(msg.data); break;
+    case 'handheld_message': handleHandheldMessage(msg.data); break;
   }
 }
 
@@ -321,6 +327,336 @@ function handleAIReport(d){
   setText('h-reports',GM.aiReports.length); setText('hs-ai',GM.aiReports.length);
   tlog(`AI report: ${d.incident_title}`,'ok');
 }
+
+// ── HANDHELD HANDLERS ──────────────────────────────────────────────
+const EVENT_ICONS = {
+  'message selected': '👉',
+  'message sent': '📤',
+  'emergency alert': '🚨',
+  'status update': '📊',
+  'wifi connected': '📶',
+  'wifi disconnected': '📴',
+  'backend connected': '🔗',
+  'backend error': '❌',
+  'handheld online': '🟢',
+  'handheld offline': '🔴',
+  'system check': '🔧',
+  'battery low': '🔋',
+  'all clear': '✅',
+  'fire': '🔥'
+};
+
+function getEventIcon(msg) {
+  const lower = (msg || '').toLowerCase().trim();
+  for (const [key, icon] of Object.entries(EVENT_ICONS)) {
+    if (lower.includes(key)) return icon;
+  }
+  return '📱';
+}
+
+const UniversalOverlayManager = {
+  queue: [],
+  activeToasts: 0,
+  maxVisibleToasts: 4,
+
+  show(d) {
+    this.queue.push(d);
+    this.processQueue();
+  },
+
+  processQueue() {
+    if (this.queue.length === 0 || this.activeToasts >= this.maxVisibleToasts) return;
+    
+    const d = this.queue.shift();
+    this.activeToasts++;
+    
+    if (d.priority === 'NORMAL' || d.priority === 'HIGH') {
+      this.renderToast(d);
+    } else if (d.priority === 'CRITICAL' || d.priority === 'EMERGENCY') {
+      this.renderCriticalOverlay(d);
+    }
+  },
+
+  renderToast(d) {
+    const container = $('universal-overlay-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `universal-toast priority-${d.priority.toLowerCase()}`;
+    
+    const formattedTime = d.timestamp ? new Date(d.timestamp * 1000).toLocaleTimeString('en-GB', {hour12:false}) : now();
+    const icon = getEventIcon(d.message);
+    
+    toast.innerHTML = `
+      <div class="toast-top-row">
+        <span class="toast-device">${icon} [${d.device_id}]</span>
+        <span class="toast-priority-badge ${d.priority.toLowerCase()}">${d.priority}</span>
+      </div>
+      <div class="toast-message-text">${d.message}</div>
+      <div class="toast-details">
+        <span>RSSI: ${d.wifi_rssi || -50} dBm</span>
+        <span>${formattedTime}</span>
+      </div>
+    `;
+
+    container.appendChild(toast);
+    
+    requestAnimationFrame(() => {
+      toast.classList.add('visible');
+    });
+
+    const dismissMs = d.priority === 'HIGH' ? 8000 : 4000;
+    setTimeout(() => {
+      toast.classList.remove('visible');
+      toast.addEventListener('transitionend', () => {
+        toast.remove();
+        this.activeToasts--;
+        this.processQueue();
+      });
+    }, dismissMs);
+  },
+
+  renderCriticalOverlay(d) {
+    const overlay = $('global-emergency-overlay');
+    if (!overlay) {
+      this.activeToasts--;
+      this.processQueue();
+      return;
+    }
+
+    setText('em-device', `DEVICE: ${d.device_id}`);
+    setText('em-msg', d.message);
+    
+    const formattedTime = d.timestamp ? new Date(d.timestamp * 1000).toLocaleTimeString('en-GB', {hour12:false}) : now();
+    const icon = getEventIcon(d.message);
+    setText('em-meta', `PRIORITY: ${d.priority} · RSSI: ${d.wifi_rssi || -50} dBm · TIME: ${formattedTime}`);
+    
+    const iconEl = overlay.querySelector('.emergency-alert-icon');
+    if (iconEl) iconEl.textContent = icon === '📱' ? '⚠️' : icon;
+    
+    overlay.classList.add('active');
+    
+    const alertOverlay = $('alert-overlay');
+    if (alertOverlay) {
+      alertOverlay.classList.add('active');
+    }
+    
+    SFX.alert();
+    
+    const ac = $('hist-alerts-card');
+    if (ac) ac.classList.add('highlight-alert');
+
+    window.currentCriticalOverlay = this;
+    
+    if (window.emergencyTimeout) clearTimeout(window.emergencyTimeout);
+    
+    window.emergencyTimeout = setTimeout(() => {
+      window.ackEmergencyOverlay();
+    }, 30000);
+  }
+};
+
+function ackEmergencyOverlay() {
+  const overlay = $('global-emergency-overlay');
+  if (overlay) {
+    overlay.classList.remove('active');
+  }
+  const alertOverlay = $('alert-overlay');
+  if (alertOverlay) {
+    alertOverlay.classList.remove('active');
+  }
+  if (window.emergencyTimeout) {
+    clearTimeout(window.emergencyTimeout);
+    window.emergencyTimeout = null;
+  }
+  if (window.currentCriticalOverlay) {
+    window.currentCriticalOverlay.activeToasts--;
+    window.currentCriticalOverlay.processQueue();
+    window.currentCriticalOverlay = null;
+  }
+}
+
+// Bind to window so global HTML onclick can call it
+window.ackEmergencyOverlay = ackEmergencyOverlay;
+
+function handleHandheldMessage(d) {
+  if (!d.priority) d.priority = 'NORMAL';
+  d.priority = d.priority.toUpperCase();
+
+  // 1. Show overlay
+  UniversalOverlayManager.show(d);
+
+  // 2. Sound cues
+  if (d.priority === 'HIGH') {
+    SFX.chime();
+    const ac = $('hist-alerts-card');
+    if (ac) ac.classList.add('highlight-alert');
+  }
+  
+  // 3. Update top connection badge & status indicators
+  const lowerMsg = (d.message || '').toLowerCase();
+  const isOfflineEvent = lowerMsg.includes('offline') || lowerMsg.includes('disconnected') || lowerMsg.includes('error') || lowerMsg.includes('lost');
+  
+  const hDot = $('sys-handheld-dot');
+  const hStatus = $('sys-handheld-status');
+  if (hDot && hStatus) {
+    hStatus.innerHTML = `<div class="ss-dot" id="sys-handheld-dot" style="background:var(--emerald);box-shadow:0 0 6px var(--emerald)"></div>Handheld: Online`;
+  }
+  
+  // Update node chip on page 3
+  const chips = $$('.node-chip');
+  chips.forEach(chip => {
+    if (chip.textContent.includes(d.device_id) || chip.textContent.includes('HH_01')) {
+      const dot = chip.querySelector('.node-chip-dot');
+      if (dot) {
+        dot.style.background = 'var(--emerald)';
+        dot.style.boxShadow = '0 0 5px var(--emerald)';
+      }
+    }
+  });
+  
+  // 3. Log to system terminal
+  const logMsg = `[${d.device_id}] ${d.message} (${d.priority})`;
+  tlog(logMsg, d.priority === 'CRITICAL' ? 'err' : d.priority === 'HIGH' ? 'warn' : 'ok');
+  
+  // 4. Append message to telemetry history & events
+  const histItem = {
+    id: d.id,
+    node_id: d.device_id,
+    timestamp: d.timestamp,
+    temperature: null,
+    humidity: null,
+    pressure: null,
+    aqi: null,
+    wind_speed: null,
+    battery: 100,
+    rssi: d.wifi_rssi,
+    status: d.priority
+  };
+  
+  GM.history.push(histItem);
+  setText('h-records', GM.history.length.toLocaleString());
+  setText('hs-records', GM.history.length.toLocaleString());
+  renderHistTable(GM.history);
+  
+  const eventItem = {
+    timestamp: d.timestamp,
+    event_type: (d.priority === 'HIGH' || d.priority === 'CRITICAL') ? 'ANOMALY' : 'TELEMETRY',
+    message: `[${d.device_id}] Handheld Event: ${d.message} (${d.priority})`
+  };
+  GM.events.unshift(eventItem);
+  loadEventTimeline();
+  
+  if (d.priority === 'HIGH' || d.priority === 'CRITICAL') {
+    const alertCountElement = $('hs-alerts');
+    if (alertCountElement) {
+      let currentVal = parseInt(alertCountElement.textContent) || 0;
+      setText('hs-alerts', currentVal + 1);
+    }
+  }
+}
+
+// ── HANDHELD SIMULATOR CONTROLLER ──
+let simOpen = false;
+
+function toggleHandheldSimulator() {
+  const sim = $('handheld-simulator');
+  if (!sim) return;
+  simOpen = !simOpen;
+  if (simOpen) {
+    sim.style.display = 'flex';
+    void sim.offsetWidth;
+    sim.classList.add('open');
+    setText('lcd-log-msg', 'READY TO SEND');
+  } else {
+    sim.classList.remove('open');
+    setTimeout(() => {
+      if (!simOpen) sim.style.display = 'none';
+    }, 300);
+  }
+}
+
+const PRESETS = {
+  'msg-sel': { msg: '👉 Patrol checkpoint alpha selected', priority: 'NORMAL' },
+  'msg-sent': { msg: '📤 Patrol log sent to ground station', priority: 'NORMAL' },
+  'emergency': { msg: '🚨 SOS Emergency Alert: Wildfire threat near Grid 4', priority: 'CRITICAL' },
+  'status-up': { msg: '📊 Periodic checkin: Battery 98%, GPS Lock ok', priority: 'NORMAL' },
+  'wifi-on': { msg: '📶 WiFi connected to mesh node AP-12', priority: 'NORMAL' },
+  'wifi-off': { msg: '📴 WiFi link lost. Reverted to ESP-NOW direct', priority: 'HIGH' },
+  'net-on': { msg: '🔗 Connected to ground station WebSocket', priority: 'NORMAL' },
+  'net-err': { msg: '❌ Connection timeout on WS channel 2', priority: 'HIGH' },
+  'hh-on': { msg: '🟢 Handheld unit online and initialized', priority: 'NORMAL' },
+  'hh-off': { msg: '🔴 Handheld unit power shut down sequence', priority: 'HIGH' },
+  'check': { msg: '🔧 Self diagnostics: CPU 80MHz, LDR ok', priority: 'NORMAL' },
+  'bat-low': { msg: '🔋 Battery critical: 12% capacity remaining', priority: 'HIGH' },
+  'clear': { msg: '✅ All Clear: Emergency alert resolved and stood down', priority: 'NORMAL' }
+};
+
+function applySimPreset(presetKey) {
+  const preset = PRESETS[presetKey];
+  if (!preset) return;
+  
+  const msgInput = $('sim-msg');
+  const priSelect = $('sim-priority');
+  
+  if (msgInput) msgInput.value = preset.msg;
+  if (priSelect) priSelect.value = preset.priority;
+  
+  setText('lcd-log-msg', `LOADED: ${preset.priority}`);
+}
+
+async function sendSimulatedHandheldMessage() {
+  const device = $('sim-device')?.value || 'HANDHELD_01';
+  const message = $('sim-msg')?.value || 'System check';
+  const priority = $('sim-priority')?.value || 'NORMAL';
+  const rssi = parseInt($('sim-rssi')?.value) || -50;
+  
+  setText('lcd-sys-status', 'TX...');
+  setText('lcd-log-msg', 'SENDING PACKET...');
+  
+  try {
+    const response = await fetch('/message', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        device_id: device,
+        message: message,
+        priority: priority,
+        wifi_rssi: rssi,
+        uptime_ms: Date.now() % 1000000,
+        status: 'sent',
+        timestamp: 'auto-generated'
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      setText('lcd-sys-status', 'OK');
+      setText('lcd-log-msg', 'TX SUCCESSFUL');
+      SFX.success();
+    } else {
+      throw new Error(result.error || 'Server error');
+    }
+  } catch (error) {
+    setText('lcd-sys-status', 'ERR');
+    setText('lcd-log-msg', 'TX FAILED');
+    tlog(`Simulator TX Error: ${error.message}`, 'err');
+  }
+  
+  setTimeout(() => {
+    if (simOpen) {
+      setText('lcd-sys-status', 'ACTIVE');
+      setText('lcd-log-msg', 'READY TO SEND');
+    }
+  }, 3000);
+}
+
+window.toggleHandheldSimulator = toggleHandheldSimulator;
+window.applySimPreset = applySimPreset;
+window.sendSimulatedHandheldMessage = sendSimulatedHandheldMessage;
 
 // ════════════════════════════════════════════════════════════════
 // DATA FETCHING
@@ -702,7 +1038,7 @@ function renderHistTable(data){
   if(!data.length){b.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--smoke);padding:20px">No records in range</td></tr>';return;}
   b.innerHTML=data.slice().reverse().slice(0,80).map(r=>{
     const ts=r.timestamp?new Date(r.timestamp*1000).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
-    const bad=r.temperature>40||r.aqi>150;
+    const bad=r.temperature>40||r.aqi>150||r.status==='ANOMALY'||r.status==='CRITICAL'||r.status==='HIGH';
     return `<tr class="${bad?'anomaly':''}"><td>${ts}</td><td style="color:var(--rose-pale)">${r.node_id}</td><td style="color:${r.temperature>40?'var(--crimson)':''}">${fmt(r.temperature)}°</td><td>${fmt(r.humidity,0)}%</td><td>${fmt(r.pressure,1)}</td><td style="color:${r.aqi>150?'var(--amber)':''}">${Math.round(r.aqi)||'—'}</td><td>${fmt(r.wind_speed)}</td><td style="color:${r.battery<20?'var(--crimson)':''}">${r.battery||'—'}%</td><td>${r.rssi||'—'}</td><td><span class="badge ${bad?'badge-crimson':'badge-emerald'}">${bad?'ANOMALY':'OK'}</span></td></tr>`;
   }).join('');
 }

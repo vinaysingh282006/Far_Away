@@ -103,6 +103,30 @@ def init_db():
     )
     """)
 
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS handheld_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      device_id TEXT,
+      message TEXT,
+      priority TEXT,
+      timestamp INTEGER,
+      wifi_rssi INTEGER,
+      uptime_ms INTEGER,
+      status TEXT
+    )
+    """)
+
+    # Check migrations/existing table updates
+    try:
+        cursor.execute("PRAGMA table_info(nodes)")
+        cols = [r[1] for r in cursor.fetchall()]
+        if "health_score" not in cols:
+            cursor.execute("ALTER TABLE nodes ADD COLUMN health_score INTEGER DEFAULT 100")
+        if "health_status" not in cols:
+            cursor.execute("ALTER TABLE nodes ADD COLUMN health_status TEXT DEFAULT 'Excellent'")
+    except Exception as em:
+        logger.warning(f"Nodes table migration warning: {em}")
+
     conn.commit()
     
     # Check seeding

@@ -431,3 +431,111 @@ async def run_demo_sequence():
 
     logger.info("Demo sequence completed")
     return success_response({"steps_completed": 5}, "Demo sequence complete")
+
+
+# ── Handheld Message Endpoints ─────────────────────────────────────
+
+@router.post("/message")
+async def receive_handheld_message(payload: dict):
+    device_id = payload.get("device_id", "UNKNOWN_HANDHELD")
+    message = payload.get("message", "")
+    priority = payload.get("priority", "NORMAL").upper()
+    timestamp_val = payload.get("timestamp")
+    
+    # Resolve timestamp
+    if not timestamp_val or timestamp_val == "auto-generated":
+        ts = int(time.time())
+    else:
+        try:
+            ts = int(timestamp_val)
+        except (ValueError, TypeError):
+            ts = int(time.time())
+            
+    wifi_rssi = payload.get("wifi_rssi", -50)
+    uptime_ms = payload.get("uptime_ms", 0)
+    status = payload.get("status", "sent")
+    
+    try:
+        # Store in handheld_messages
+        msg_id = run_query("""
+        INSERT INTO handheld_messages (device_id, message, priority, timestamp, wifi_rssi, uptime_ms, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (device_id, message, priority, ts, wifi_rssi, uptime_ms, status), commit=True)
+        
+        # Add to events table
+        event_msg = f"[{device_id}] Handheld Event: {message} ({priority})"
+        run_query("""
+        INSERT INTO events (timestamp, event_type, message, metadata)
+        VALUES (?, 'HANDHELD', ?, ?)
+        """, (ts, event_msg, json.dumps(payload)), commit=True)
+        
+        # If priority is HIGH or CRITICAL, add to panic_alerts table
+        if priority in ("HIGH", "CRITICAL"):
+            alert_id = run_query("""
+            INSERT INTO panic_alerts (node_id, message_type, timestamp, relay_path, status)
+            VALUES (?, ?, ?, 'DIRECT', 'INCOMING')
+            """, (device_id, f"{priority} Handheld: {message}", ts), commit=True)
+            
+        # Update nodes table to show handheld as online
+        run_query("""
+        INSERT INTO nodes (node_id, last_seen, battery, rssi, relay_path, firmware, health_score, health_status)
+        VALUES (?, ?, 100, ?, 'DIRECT', 'v1.2.4', 100, 'Excellent')
+        ON CONFLICT(node_id) DO UPDATE SET
+          last_seen=excluded.last_seen,
+          rssi=excluded.rssi,
+          health_status='Excellent'
+        """, (device_id, ts, wifi_rssi), commit=True)
+        
+        # Broadcast message over WebSocket
+        websocket_payload = {
+            "type": "handheld_message",
+            "data": {
+                "id": msg_id,
+                "device_id": device_id,
+                "message": message,
+                "priority": priority,
+                "timestamp": ts,
+                "wifi_rssi": wifi_rssi,
+                "uptime_ms": uptime_ms,
+                "status": status
+            }
+        }
+        await manager.broadcast(websocket_payload)
+        
+        # If HIGH or CRITICAL, also broadcast panic event to update alerts count/overlay immediately
+        if priority in ("HIGH", "CRITICAL"):
+            await manager.broadcast({
+                "type": "panic",
+                "data": {
+                    "id": alert_id if 'alert_id' in locals() else msg_id,
+                    "node_id": device_id,
+                    "message_type": f"{priority} Handheld: {message}",
+                    "timestamp": ts,
+                    "relay_path": "DIRECT",
+                    "status": "INCOMING"
+                }
+            })
+            
+        return {
+            "success": True,
+            "message": "Event received",
+            "data": {
+                "device_id": device_id,
+                "message": message,
+                "priority": priority
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error in receive_handheld_message: {e}")
+        return error_response(str(e))
+
+
+@router.get("/latest_message")
+async def get_latest_message():
+    try:
+        rows = run_query("SELECT * FROM handheld_messages ORDER BY id DESC LIMIT 1")
+        if not rows:
+            return error_response("No handheld messages found", 404)
+        return success_response(rows[0], "Latest handheld message fetched")
+    except Exception as e:
+        return error_response(str(e))
